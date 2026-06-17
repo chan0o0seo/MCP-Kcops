@@ -51,7 +51,7 @@ public class AuditLogger {
                 direction,
                 server,
                 tool,
-                decision.decision(),
+                decision.action(),
                 decision.reason(),
                 decision.detectors(),
                 latencyMs,

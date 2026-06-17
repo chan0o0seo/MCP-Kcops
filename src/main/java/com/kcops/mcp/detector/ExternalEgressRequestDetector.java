@@ -34,16 +34,17 @@ public class ExternalEgressRequestDetector implements RequestDetector {
             return List.of();
         }
         Finding.Severity severity = containsSensitiveKeyword(body) ? Finding.Severity.HIGH : Finding.Severity.MEDIUM;
-        return List.of(new Finding(name(), "EXTERNAL_EGRESS", severity));
+        return List.of(new Finding(name(), PolicyCategory.EGRESS, "EXTERNAL_EGRESS", severity));
     }
 
     private boolean isHighRiskTool(String tool) {
-        return properties.getHighRiskTools().stream().anyMatch(value -> value.equalsIgnoreCase(tool));
+        return properties.getRequest().getToolCall().getHighRiskTools().stream()
+                .anyMatch(value -> value.equalsIgnoreCase(tool));
     }
 
     private boolean containsEgressVerb(String text) {
         String lowered = text.toLowerCase(Locale.ROOT);
-        return properties.getEgressVerbs().stream()
+        return properties.getRequest().getEgress().getRiskyKeywords().stream()
                 .map(value -> value.toLowerCase(Locale.ROOT))
                 .anyMatch(lowered::contains);
     }
@@ -69,7 +70,7 @@ public class ExternalEgressRequestDetector implements RequestDetector {
 
     private boolean isAllowedDomain(String host) {
         String normalized = host.toLowerCase(Locale.ROOT);
-        return properties.getAllowDomains().stream()
+        return properties.getRequest().getEgress().getAllowDomains().stream()
                 .map(value -> value.toLowerCase(Locale.ROOT))
                 .anyMatch(allowed -> normalized.equals(allowed) || normalized.endsWith("." + allowed));
     }

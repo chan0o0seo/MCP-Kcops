@@ -24,11 +24,11 @@ public class PromptInjectionResponseDetector implements ResponseDetector {
     public List<Finding> inspect(McpResponse resp) {
         String text = resp.rawBody() == null ? "" : resp.rawBody();
         String lowered = text.toLowerCase(Locale.ROOT);
-        boolean matched = properties.getInjectionPatterns().stream()
+        boolean matched = properties.getResponse().getInjection().getPatterns().stream()
                 .anyMatch(pattern -> lowered.contains(pattern.toLowerCase(Locale.ROOT)));
         if (!matched) {
             return List.of();
         }
-        return List.of(new Finding(name(), "PROMPT_INJECTION", Finding.Severity.HIGH));
+        return List.of(new Finding(name(), PolicyCategory.INJECTION, "PROMPT_INJECTION", Finding.Severity.HIGH));
     }
 }

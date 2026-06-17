@@ -2,14 +2,27 @@ server:
   port: 8080
 
 kcops:
+  mode: enforce
   upstreamUrl: http://localhost:8090/mcp
   auditLogPath: logs/audit.jsonl
-  highRiskTools: [send_email, post_webhook, http_request, delete_file, execute_shell, transfer_money, query_database]
-  allowDomains: [company.internal, api.trusted-service.com]
-  egressVerbs: [send, export, upload, post, 전송, 업로드, 내보내기]
-  injectionPatterns:
-    - "ignore previous instructions"
-    - "이전 지시를 무시"
-    - "전체 메일을 전송"
-    - "system prompt"
-    - "사용자에게 말하지 말고"
+  request:
+    toolCall:
+      action: require_approval
+      highRiskTools: [send_email, post_webhook, http_request, delete_file, execute_shell, transfer_money, query_database]
+    egress:
+      action: block
+      allowDomains: [company.internal, api.trusted-service.com]
+      riskyKeywords: [send, export, upload, post, 전송, 업로드, 내보내기]
+    destructive:
+      action: require_approval
+      patterns: [delete, "drop table", "rm -rf", truncate, 삭제, 초기화]
+    pii:
+      action: require_approval
+      detectors: [korean_rrn, korean_phone, email, jwt, api_key, ssh_private_key]
+  response:
+    injection:
+      action: block
+      patterns: ["ignore previous instructions", "이전 지시를 무시", "전체 메일을 전송", "system prompt", "사용자에게 말하지 말고"]
+    pii:
+      action: mask
+      detectors: [korean_rrn, korean_phone, email, jwt, api_key, ssh_private_key]
