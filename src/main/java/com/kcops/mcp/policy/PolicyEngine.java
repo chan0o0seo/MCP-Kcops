@@ -22,7 +22,9 @@ public class PolicyEngine {
         }
 
         Finding representative = findings.stream()
-                .max(Comparator.comparing(finding -> strength(configuredAction(direction, finding.category()))))
+                .max(Comparator
+                        .comparing((Finding finding) -> strength(configuredAction(direction, finding.category())))
+                        .thenComparing(finding -> categoryPriority(finding.category())))
                 .orElse(findings.get(0));
         Action action = configuredAction(direction, representative.category());
         action = applyMode(action);
@@ -43,6 +45,7 @@ public class PolicyEngine {
         return switch (category) {
             case EGRESS -> properties.getRequest().getEgress().getAction();
             case DESTRUCTIVE -> properties.getRequest().getDestructive().getAction();
+            case SCOPE -> properties.getRequest().getScope().getAction();
             case TOOL_CALL -> properties.getRequest().getToolCall().getAction();
             case PII, SECRET -> properties.getRequest().getPii().getAction();
             case INJECTION -> Action.ALLOW;
@@ -53,7 +56,7 @@ public class PolicyEngine {
         return switch (category) {
             case INJECTION -> properties.getResponse().getInjection().getAction();
             case PII, SECRET -> properties.getResponse().getPii().getAction();
-            case TOOL_CALL, EGRESS, DESTRUCTIVE -> Action.ALLOW;
+            case TOOL_CALL, EGRESS, DESTRUCTIVE, SCOPE -> Action.ALLOW;
         };
     }
 
@@ -71,6 +74,17 @@ public class PolicyEngine {
             case MASK -> 2;
             case REQUIRE_APPROVAL -> 3;
             case BLOCK -> 4;
+        };
+    }
+
+    private int categoryPriority(PolicyCategory category) {
+        return switch (category) {
+            case DESTRUCTIVE -> 5;
+            case EGRESS -> 4;
+            case SCOPE -> 3;
+            case TOOL_CALL -> 2;
+            case SECRET -> 1;
+            case PII, INJECTION -> 0;
         };
     }
 }

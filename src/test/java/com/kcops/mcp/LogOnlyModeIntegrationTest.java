@@ -57,8 +57,9 @@ class LogOnlyModeIntegrationTest {
         assertThat(upstreamCalls).hasValue(1);
         assertThat(Files.readString(tempDir.resolve("audit.jsonl"), StandardCharsets.UTF_8))
                 .contains("LOG_ONLY")
-                .contains("EXTERNAL_EGRESS")
-                .contains("ExternalEgressRequestDetector");
+                .contains("SENSITIVE_DATA_EGRESS_RISK")
+                .contains("external_egress")
+                .contains("api_key");
     }
 
     private static DisposableServer upstream() {

@@ -49,7 +49,10 @@ kcops:
       riskyKeywords: [send, export, upload, post, 전송, 업로드, 내보내기]
     destructive:
       action: require_approval
-      patterns: [delete, "drop table", "rm -rf"]
+      patterns: [delete, "drop table", "rm -rf", truncate, 삭제, 초기화]
+    scope:
+      action: require_approval
+      patterns: ["select *", "select * from", "전체 메일", "모든 파일", "/*"]
     pii:
       action: require_approval
       detectors: [korean_rrn, korean_phone, email, jwt, api_key, ssh_private_key]
@@ -68,9 +71,20 @@ Actions are `allow`, `mask`, `block`, `require_approval`, and `log_only`. When m
 
 Current detector mappings:
 
-- Request `EGRESS` findings use `request.egress.action`.
+- Request `TOOL_CALL`, `EGRESS`, `DESTRUCTIVE`, `SCOPE`, and request PII/secret findings use the matching `kcops.request.*.action`.
 - Response `INJECTION` findings use `response.injection.action`.
 - PII/secret mask spans are supported by the masking utility, but concrete PII span detectors are planned for a later slice.
+
+## Week 4 Request Firewall
+
+The request direction now includes local, closed-network detectors for:
+
+- High-risk tool names from `kcops.request.toolCall.highRiskTools`.
+- Destructive command patterns from `kcops.request.destructive.patterns`.
+- Excessive scope patterns from `kcops.request.scope.patterns`.
+- Request argument DLP baseline: `korean_rrn`, `korean_phone`, `email`, and `api_key`.
+
+No detector calls an external guardrail or network API.
 
 ## curl Demos
 
@@ -85,8 +99,28 @@ curl -s -X POST http://localhost:8080/mcp \
 Expected response includes:
 
 ```json
-{"decision":"BLOCK","reason":"EXTERNAL_EGRESS","detectors":["ExternalEgressRequestDetector"]}
+{"decision":"BLOCK","reason":"SENSITIVE_DATA_EGRESS_RISK","detectors":["korean_rrn","api_key","external_egress"]}
 ```
+
+### Destructive Command Approval
+
+```bash
+curl -s -X POST http://localhost:8080/mcp \
+  -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"execute_shell","arguments":{"command":"rm -rf /workspace/tmp/*"}}}'
+```
+
+Expected response includes `"decision":"REQUIRE_APPROVAL"`.
+
+### Excessive Scope Approval
+
+```bash
+curl -s -X POST http://localhost:8080/mcp \
+  -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"query_database","arguments":{"query":"SELECT * FROM customers"}}}'
+```
+
+Expected response includes `"decision":"REQUIRE_APPROVAL"`.
 
 ### Malicious Response Block
 

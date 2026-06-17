@@ -63,6 +63,7 @@ public class KcopsProperties {
         private ToolCall toolCall = new ToolCall();
         private Egress egress = new Egress();
         private Destructive destructive = new Destructive();
+        private Scope scope = new Scope();
         private Pii pii = new Pii(Action.REQUIRE_APPROVAL);
 
         public ToolCall getToolCall() {
@@ -87,6 +88,14 @@ public class KcopsProperties {
 
         public void setDestructive(Destructive destructive) {
             this.destructive = destructive;
+        }
+
+        public Scope getScope() {
+            return scope;
+        }
+
+        public void setScope(Scope scope) {
+            this.scope = scope;
         }
 
         public Pii getPii() {
@@ -171,6 +180,27 @@ public class KcopsProperties {
     }
 
     public static class Destructive {
+        private Action action = Action.REQUIRE_APPROVAL;
+        private List<String> patterns = new ArrayList<>();
+
+        public Action getAction() {
+            return action;
+        }
+
+        public void setAction(Action action) {
+            this.action = action;
+        }
+
+        public List<String> getPatterns() {
+            return patterns;
+        }
+
+        public void setPatterns(List<String> patterns) {
+            this.patterns = patterns;
+        }
+    }
+
+    public static class Scope {
         private Action action = Action.REQUIRE_APPROVAL;
         private List<String> patterns = new ArrayList<>();
 
