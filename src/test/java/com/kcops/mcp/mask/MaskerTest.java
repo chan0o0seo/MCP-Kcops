@@ -27,4 +27,15 @@ class MaskerTest {
 
         assertThat(Masker.mask("plain", List.of(finding))).isEqualTo("plain");
     }
+
+    @Test
+    void appliesReplacementSpansFromRightToLeft() {
+        Finding finding = new Finding("SyntheticDetector", PolicyCategory.PII, "PII",
+                Finding.Severity.HIGH, List.of(
+                new MaskSpan(2, 5, '*', "X"),
+                new MaskSpan(7, 10, '*', "YYYY")
+        ));
+
+        assertThat(Masker.mask("01abc23def45", List.of(finding))).isEqualTo("01X23YYYY45");
+    }
 }

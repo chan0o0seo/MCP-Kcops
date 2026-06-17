@@ -73,7 +73,7 @@ Current detector mappings:
 
 - Request `TOOL_CALL`, `EGRESS`, `DESTRUCTIVE`, `SCOPE`, and request PII/secret findings use the matching `kcops.request.*.action`.
 - Response `INJECTION` findings use `response.injection.action`.
-- PII/secret mask spans are supported by the masking utility, but concrete PII span detectors are planned for a later slice.
+- Response PII/secret findings use concrete mask spans. When `response.pii.action: mask`, the proxy returns the upstream JSON body with those spans masked in place.
 
 ## Week 4 Request Firewall
 
@@ -82,9 +82,22 @@ The request direction now includes local, closed-network detectors for:
 - High-risk tool names from `kcops.request.toolCall.highRiskTools`.
 - Destructive command patterns from `kcops.request.destructive.patterns`.
 - Excessive scope patterns from `kcops.request.scope.patterns`.
-- Request argument DLP baseline: `korean_rrn`, `korean_phone`, `email`, and `api_key`.
+- Request argument DLP baseline: `korean_rrn`, `korean_phone`, `email`, `korean_bank_account`, `korean_address`, `api_key`, `jwt`, and `ssh_private_key`.
 
 No detector calls an external guardrail or network API.
+
+## Week 5 Korean PII and Secret Masking
+
+All DLP checks are local regex, context, and checksum rules. The scanner returns absolute offsets against the raw MCP JSON body so response masking can be applied directly to the upstream payload.
+
+- `korean_rrn`: matches only `######-#######` values that pass the Korean resident registration checksum. `900101-1234568` is accepted; `900101-1234567` is rejected as a checksum false positive. Masking preserves the hyphen: `******-*******`.
+- `korean_phone`: masks the middle mobile-number group, for example `010-1234-5678` becomes `010-****-5678`.
+- `email`: preserves the first local-part character and the domain, for example `hong@example.com` becomes `h***@example.com`.
+- `korean_bank_account`: fires only when account-like numbers appear with context keywords such as `은행`, `계좌`, `입금`, `예금주`, or `송금`.
+- `korean_address`: preserves the city/district prefix and replaces the detailed road/address segment with `****`, for example `서울특별시 강남구 테헤란로 123` becomes `서울특별시 강남구 ****`.
+- `api_key`, `jwt`, and `ssh_private_key`: treated as `SECRET`; API keys keep the first four characters, JWTs are fully char-masked, and SSH private-key blocks are replaced with `****`.
+
+Korean name candidates are not standalone findings and are never masked by themselves. They are available only as an auxiliary scanner signal, so text like `홍길동입니다` remains unchanged unless another PII/secret rule matches.
 
 ## curl Demos
 
