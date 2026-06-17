@@ -53,12 +53,12 @@ class EgressRequireApprovalIntegrationTest {
                 .expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.decision").isEqualTo("REQUIRE_APPROVAL")
-                .jsonPath("$.reason").isEqualTo("EXTERNAL_EGRESS");
+                .jsonPath("$.reason").isEqualTo("SENSITIVE_DATA_EGRESS_RISK");
 
         assertThat(upstreamCalls).hasValue(0);
         assertThat(Files.readString(tempDir.resolve("audit.jsonl"), StandardCharsets.UTF_8))
                 .contains("REQUIRE_APPROVAL")
-                .contains("EXTERNAL_EGRESS");
+                .contains("SENSITIVE_DATA_EGRESS_RISK");
     }
 
     private static DisposableServer upstream() {

@@ -1,7 +1,10 @@
 package com.kcops.mcp.detector;
 
 import com.kcops.mcp.config.KcopsProperties;
+import com.kcops.mcp.detector.dlp.SensitiveDataScanner;
+import com.kcops.mcp.detector.dlp.SensitiveMatch;
 import com.kcops.mcp.model.McpRequest;
+import java.util.ArrayList;
 import java.net.URI;
 import java.util.List;
 import java.util.Locale;
@@ -13,7 +16,6 @@ import org.springframework.stereotype.Component;
 public class ExternalEgressRequestDetector implements RequestDetector {
 
     private static final Pattern URL_PATTERN = Pattern.compile("https?://[^\\s\\\"'<>)}]+", Pattern.CASE_INSENSITIVE);
-    private static final Pattern KOREAN_RRN = Pattern.compile("\\b\\d{6}-\\d{7}\\b");
     private final KcopsProperties properties;
 
     public ExternalEgressRequestDetector(KcopsProperties properties) {
@@ -22,19 +24,25 @@ public class ExternalEgressRequestDetector implements RequestDetector {
 
     @Override
     public String name() {
-        return "ExternalEgressRequestDetector";
+        return "external_egress";
     }
 
     @Override
     public List<Finding> inspect(McpRequest req) {
         String body = req.rawBody() == null ? "" : req.rawBody();
         String tool = req.tool() == null ? "" : req.tool();
-        boolean riskyIntent = isHighRiskTool(tool) || containsEgressVerb(tool + " " + body);
-        if (!riskyIntent || !hasDisallowedUrl(body)) {
-            return List.of();
+        List<Finding> findings = new ArrayList<>();
+        List<SensitiveMatch> sensitiveMatches = SensitiveDataScanner.scan(body);
+        for (SensitiveMatch match : sensitiveMatches) {
+            findings.add(toSensitiveFinding(match));
         }
-        Finding.Severity severity = containsSensitiveKeyword(body) ? Finding.Severity.HIGH : Finding.Severity.MEDIUM;
-        return List.of(new Finding(name(), PolicyCategory.EGRESS, "EXTERNAL_EGRESS", severity));
+
+        boolean riskyIntent = isHighRiskTool(tool) || containsEgressVerb(tool + " " + body);
+        if (riskyIntent && hasDisallowedUrl(body)) {
+            Finding.Severity severity = sensitiveMatches.isEmpty() ? Finding.Severity.MEDIUM : Finding.Severity.HIGH;
+            findings.add(new Finding(name(), PolicyCategory.EGRESS, "SENSITIVE_DATA_EGRESS_RISK", severity));
+        }
+        return List.copyOf(findings);
     }
 
     private boolean isHighRiskTool(String tool) {
@@ -75,7 +83,10 @@ public class ExternalEgressRequestDetector implements RequestDetector {
                 .anyMatch(allowed -> normalized.equals(allowed) || normalized.endsWith("." + allowed));
     }
 
-    private boolean containsSensitiveKeyword(String body) {
-        return body.contains("sk-") || KOREAN_RRN.matcher(body).find();
+    private Finding toSensitiveFinding(SensitiveMatch match) {
+        if ("api_key".equals(match.detectorName())) {
+            return new Finding(match.detectorName(), PolicyCategory.SECRET, "SECRET_IN_REQUEST_ARG", Finding.Severity.HIGH);
+        }
+        return new Finding(match.detectorName(), PolicyCategory.PII, "PII_IN_REQUEST_ARG", Finding.Severity.HIGH);
     }
 }

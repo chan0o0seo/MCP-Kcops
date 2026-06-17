@@ -22,11 +22,15 @@ class ExternalEgressRequestDetectorTest {
 
         List<Finding> findings = detector.inspect(McpRequest.from(objectMapper.readTree(body), body));
 
-        assertThat(findings).singleElement()
+        assertThat(findings).hasSize(3);
+        assertThat(findings)
+                .extracting(Finding::detector)
+                .containsExactly("korean_rrn", "api_key", "external_egress");
+        assertThat(findings).filteredOn(finding -> finding.category() == PolicyCategory.EGRESS).singleElement()
                 .satisfies(finding -> {
-                    assertThat(finding.detector()).isEqualTo("ExternalEgressRequestDetector");
+                    assertThat(finding.detector()).isEqualTo("external_egress");
                     assertThat(finding.category()).isEqualTo(PolicyCategory.EGRESS);
-                    assertThat(finding.reason()).isEqualTo("EXTERNAL_EGRESS");
+                    assertThat(finding.reason()).isEqualTo("SENSITIVE_DATA_EGRESS_RISK");
                     assertThat(finding.severity()).isEqualTo(Finding.Severity.HIGH);
                 });
     }

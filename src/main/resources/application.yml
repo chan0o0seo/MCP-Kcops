@@ -16,6 +16,9 @@ kcops:
     destructive:
       action: require_approval
       patterns: [delete, "drop table", "rm -rf", truncate, 삭제, 초기화]
+    scope:
+      action: require_approval
+      patterns: ["select *", "select * from", "전체 메일", "모든 파일", "/*"]
     pii:
       action: require_approval
       detectors: [korean_rrn, korean_phone, email, jwt, api_key, ssh_private_key]

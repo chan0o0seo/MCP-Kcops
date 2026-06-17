@@ -76,12 +76,50 @@ class McpProxyIntegrationTest {
                 .expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.decision").isEqualTo("BLOCK")
-                .jsonPath("$.reason").isEqualTo("EXTERNAL_EGRESS");
+                .jsonPath("$.reason").isEqualTo("SENSITIVE_DATA_EGRESS_RISK");
 
         assertThat(upstreamCalls).hasValue(0);
         assertThat(Files.readString(tempDir.resolve("audit.jsonl"), StandardCharsets.UTF_8))
                 .contains("AGENT_TO_MCP_SERVER")
-                .contains("BLOCK");
+                .contains("BLOCK")
+                .contains("korean_rrn")
+                .contains("api_key")
+                .contains("external_egress");
+    }
+
+    @Test
+    void requiresApprovalForDestructiveShellRequestWithoutCallingUpstream() {
+        upstreamCalls.set(0);
+        String request = """
+                {"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"execute_shell","arguments":{"command":"rm -rf /workspace/tmp/*"}}}
+                """;
+
+        webTestClient.post().uri("/mcp")
+                .bodyValue(request)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.decision").isEqualTo("REQUIRE_APPROVAL")
+                .jsonPath("$.reason").isEqualTo("DESTRUCTIVE_OR_CODE_EXECUTION_REQUEST");
+
+        assertThat(upstreamCalls).hasValue(0);
+    }
+
+    @Test
+    void requiresApprovalForExcessiveScopeWithoutCallingUpstream() {
+        upstreamCalls.set(0);
+        String request = """
+                {"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"query_database","arguments":{"query":"SELECT * FROM customers"}}}
+                """;
+
+        webTestClient.post().uri("/mcp")
+                .bodyValue(request)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.decision").isEqualTo("REQUIRE_APPROVAL");
+
+        assertThat(upstreamCalls).hasValue(0);
     }
 
     @Test
@@ -111,7 +149,7 @@ class McpProxyIntegrationTest {
     void allowsNormalRequestAndReturnsOriginalUpstreamResult() {
         upstreamCalls.set(0);
         String request = """
-                {"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"calendar_lookup","arguments":{"url":"https://company.internal/calendar","query":"meeting schedule"}}}
+                {"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_files","arguments":{"path":"/workspace/docs"}}}
                 """;
 
         webTestClient.post().uri("/mcp")
