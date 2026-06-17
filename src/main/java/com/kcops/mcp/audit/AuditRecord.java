@@ -1,6 +1,6 @@
 package com.kcops.mcp.audit;
 
-import com.kcops.mcp.policy.Decision;
+import com.kcops.mcp.policy.Action;
 import java.util.List;
 
 public record AuditRecord(
@@ -9,7 +9,7 @@ public record AuditRecord(
         AuditDirection direction,
         String server,
         String tool,
-        Decision decision,
+        Action decision,
         String reason,
         List<String> detectors,
         long latencyMs,

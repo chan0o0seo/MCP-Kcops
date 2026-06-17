@@ -3,7 +3,7 @@ package com.kcops.mcp.audit;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kcops.mcp.config.KcopsProperties;
-import com.kcops.mcp.policy.Decision;
+import com.kcops.mcp.policy.Action;
 import com.kcops.mcp.policy.PolicyDecision;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -28,9 +28,10 @@ class AuditLoggerTest {
         AuditLogger logger = new AuditLogger(properties, objectMapper);
 
         AuditRecord first = logger.log("trace-1", AuditDirection.AGENT_TO_MCP_SERVER, "mock", "tool",
-                new PolicyDecision(Decision.ALLOW, "NO_FINDINGS", List.of()), 1);
+                new PolicyDecision(Action.ALLOW, "NO_FINDINGS", List.of(), List.of()), 1);
         AuditRecord second = logger.log("trace-2", AuditDirection.MCP_SERVER_TO_AGENT, "mock", "tool",
-                new PolicyDecision(Decision.BLOCK, "PROMPT_INJECTION", List.of("PromptInjectionResponseDetector")), 2);
+                new PolicyDecision(Action.BLOCK, "PROMPT_INJECTION",
+                        List.of("PromptInjectionResponseDetector"), List.of()), 2);
 
         List<String> lines = Files.readAllLines(auditPath, StandardCharsets.UTF_8);
         JsonNode secondNode = objectMapper.readTree(lines.get(1));

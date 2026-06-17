@@ -5,7 +5,7 @@ logs/
 .idea/
 
 # codex/런타임 작업 산출물 (저장소에 커밋하지 않음)
-codex-task-01.md
+codex-task-*.md
 codex-run.log
 codex-last-msg.txt
 *.out

@@ -9,9 +9,11 @@ import com.kcops.mcp.config.KcopsProperties;
 import com.kcops.mcp.detector.Finding;
 import com.kcops.mcp.detector.RequestDetector;
 import com.kcops.mcp.detector.ResponseDetector;
+import com.kcops.mcp.mask.Masker;
 import com.kcops.mcp.model.McpRequest;
 import com.kcops.mcp.model.McpResponse;
-import com.kcops.mcp.policy.Decision;
+import com.kcops.mcp.policy.Action;
+import com.kcops.mcp.policy.Direction;
 import com.kcops.mcp.policy.PolicyDecision;
 import com.kcops.mcp.policy.PolicyEngine;
 import java.time.Duration;
@@ -69,21 +71,31 @@ public class McpProxyHandler {
 
     private Mono<ServerResponse> handleBuffered(String traceId, Instant started, String body) {
         McpRequest request = parseRequest(body);
-        PolicyDecision requestDecision = policyEngine.decide(
-                requestDetectors.stream().flatMap(detector -> detector.inspect(request).stream()).toList()
-        );
+        List<Finding> findings = requestDetectors.stream()
+                .flatMap(detector -> detector.inspect(request).stream())
+                .toList();
+        PolicyDecision requestDecision = policyEngine.decide(Direction.REQUEST, findings);
         long requestLatency = Duration.between(started, Instant.now()).toMillis();
         auditLogger.log(traceId, AuditDirection.AGENT_TO_MCP_SERVER, properties.getUpstreamUrl(),
                 request.tool(), requestDecision, requestLatency);
-        if (requestDecision.decision() == Decision.BLOCK) {
-            return blockedResponse(request.id(), requestDecision);
+        if (requestDecision.action() == Action.BLOCK || requestDecision.action() == Action.REQUIRE_APPROVAL) {
+            return decisionResponse(request.id(), requestDecision);
+        }
+        String upstreamRequestBody = body;
+        if (requestDecision.action() == Action.MASK) {
+            if (!Masker.hasSpans(findings)) {
+                PolicyDecision approvalDecision = new PolicyDecision(Action.REQUIRE_APPROVAL, requestDecision.reason(),
+                        requestDecision.detectors(), requestDecision.categories());
+                return decisionResponse(request.id(), approvalDecision);
+            }
+            upstreamRequestBody = Masker.mask(body, findings);
         }
 
         Instant upstreamStarted = Instant.now();
         return webClient.post()
                 .uri(properties.getUpstreamUrl())
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(body)
+                .bodyValue(upstreamRequestBody)
                 .retrieve()
                 .bodyToMono(byte[].class)
                 .map(bytes -> new String(bytes, StandardCharsets.UTF_8))
@@ -100,13 +112,16 @@ public class McpProxyHandler {
         List<Finding> findings = responseDetectors.stream()
                 .flatMap(detector -> detector.inspect(response).stream())
                 .toList();
-        PolicyDecision responseDecision = policyEngine.decide(findings);
+        PolicyDecision responseDecision = policyEngine.decide(Direction.RESPONSE, findings);
         long latency = Duration.between(upstreamStarted, Instant.now()).toMillis();
         auditLogger.log(traceId, AuditDirection.MCP_SERVER_TO_AGENT, properties.getUpstreamUrl(),
                 request.tool(), responseDecision, latency);
-        if (responseDecision.decision() == Decision.BLOCK) {
+        if (responseDecision.action() == Action.BLOCK || responseDecision.action() == Action.REQUIRE_APPROVAL) {
             JsonNode id = response.id() == null ? request.id() : response.id();
-            return blockedResponse(id, responseDecision);
+            return decisionResponse(id, responseDecision);
+        }
+        if (responseDecision.action() == Action.MASK) {
+            return ServerResponse.ok().contentType(APPLICATION_JSON_UTF8).bodyValue(Masker.mask(upstreamBody, findings));
         }
         return ServerResponse.ok().contentType(APPLICATION_JSON_UTF8).bodyValue(upstreamBody);
     }
@@ -127,16 +142,18 @@ public class McpProxyHandler {
         }
     }
 
-    private Mono<ServerResponse> blockedResponse(JsonNode id, PolicyDecision decision) {
+    private Mono<ServerResponse> decisionResponse(JsonNode id, PolicyDecision decision) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("jsonrpc", "2.0");
         body.put("id", id);
-        body.put("decision", decision.decision());
+        body.put("decision", decision.action());
         body.put("reason", decision.reason());
         body.put("detectors", decision.detectors());
         body.put("error", Map.of(
                 "code", -32001,
-                "message", "MCP request blocked by Kcops policy"
+                "message", decision.action() == Action.REQUIRE_APPROVAL
+                        ? "MCP request requires approval by Kcops policy"
+                        : "MCP request blocked by Kcops policy"
         ));
         return ServerResponse.ok().contentType(APPLICATION_JSON_UTF8).bodyValue(body);
     }
