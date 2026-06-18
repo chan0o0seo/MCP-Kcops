@@ -2,7 +2,9 @@ package com.kcops.mcp.config;
 
 import com.kcops.mcp.policy.Action;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "kcops")
@@ -253,6 +255,8 @@ public class KcopsProperties {
     public static class Injection {
         private Action action = Action.BLOCK;
         private List<String> patterns = new ArrayList<>();
+        private boolean decodeBase64 = false;
+        private Map<String, List<String>> types = new LinkedHashMap<>();
 
         public Action getAction() {
             return action;
@@ -268,6 +272,22 @@ public class KcopsProperties {
 
         public void setPatterns(List<String> patterns) {
             this.patterns = patterns;
+        }
+
+        public boolean isDecodeBase64() {
+            return decodeBase64;
+        }
+
+        public void setDecodeBase64(boolean decodeBase64) {
+            this.decodeBase64 = decodeBase64;
+        }
+
+        public Map<String, List<String>> getTypes() {
+            return types;
+        }
+
+        public void setTypes(Map<String, List<String>> types) {
+            this.types = types;
         }
     }
 }

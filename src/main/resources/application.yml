@@ -25,7 +25,15 @@ kcops:
   response:
     injection:
       action: block
-      patterns: ["ignore previous instructions", "이전 지시를 무시", "전체 메일을 전송", "system prompt", "사용자에게 말하지 말고"]
+      decodeBase64: true
+      patterns: []
+      types:
+        ignore_previous_instruction: ["이전 지시를 무시", "이전 지시는 무시", "ignore previous instructions", "disregard the above"]
+        system_prompt_leak: ["시스템 프롬프트를 출력", "system prompt", "print your instructions", "reveal your system prompt"]
+        external_exfiltration: ["전체 메일을 전송", "외부로 전송", "외부 서버로 전송", "send to external", "exfiltrate"]
+        follow_up_tool_call: ["다음 도구를 호출", "이어서 다음 도구", "call the following tool", "then invoke"]
+        secret_exfiltration: ["api 키를 가져와", "api 키를 전송", "fetch the api key", "send the api key"]
+        covert_execution: ["사용자에게 말하지 말고", "사용자에게 알리지 말고", "do not tell the user"]
     pii:
       action: mask
       detectors: [korean_rrn, korean_phone, email, korean_bank_account, korean_address, jwt, api_key, ssh_private_key]

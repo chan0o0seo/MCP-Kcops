@@ -59,7 +59,12 @@ kcops:
   response:
     injection:
       action: block
-      patterns: ["ignore previous instructions", "이전 지시를 무시", "system prompt"]
+      decodeBase64: true
+      patterns: []
+      types:
+        ignore_previous_instruction: ["이전 지시를 무시", "ignore previous instructions"]
+        system_prompt_leak: ["시스템 프롬프트를 출력", "system prompt"]
+        external_exfiltration: ["전체 메일을 전송", "send to external"]
     pii:
       action: mask
       detectors: [korean_rrn, korean_phone, email, jwt, api_key, ssh_private_key]
@@ -74,6 +79,8 @@ Current detector mappings:
 - Request `TOOL_CALL`, `EGRESS`, `DESTRUCTIVE`, `SCOPE`, and request PII/secret findings use the matching `kcops.request.*.action`.
 - Response `INJECTION` findings use `response.injection.action`.
 - Response PII/secret findings use concrete mask spans. When `response.pii.action: mask`, the proxy returns the upstream JSON body with those spans masked in place.
+
+Response prompt injection inspection emits one finding per matched subtype. Subtype names such as `ignore_previous_instruction` and `external_exfiltration` are preserved in the audit log `detectors` field.
 
 ## Week 4 Request Firewall
 
@@ -98,6 +105,10 @@ All DLP checks are local regex, context, and checksum rules. The scanner returns
 - `api_key`, `jwt`, and `ssh_private_key`: treated as `SECRET`; API keys keep the first four characters, JWTs are fully char-masked, and SSH private-key blocks are replaced with `****`.
 
 Korean name candidates are not standalone findings and are never masked by themselves. They are available only as an auxiliary scanner signal, so text like `홍길동입니다` remains unchanged unless another PII/secret rule matches.
+
+## Response Injection Detection Limits
+
+The response injection detector is an explicit keyword/regex baseline. Synonyms, paraphrases, unsupported languages, and payloads split across fields or chunks can bypass it; optional Base64 decoding only closes part of that gap. `ResponseDetector` is the plug-in extension point where a future local LLM or external semantic classifier can replace or supplement this baseline.
 
 ## curl Demos
 
@@ -146,7 +157,7 @@ curl -s -X POST http://localhost:8080/mcp \
 Expected response includes:
 
 ```json
-{"decision":"BLOCK","reason":"PROMPT_INJECTION","detectors":["PromptInjectionResponseDetector"]}
+{"decision":"BLOCK","reason":"PROMPT_INJECTION_DETECTED","detectors":["ignore_previous_instruction","external_exfiltration"]}
 ```
 
 ### Normal Allow
