@@ -7,6 +7,7 @@ import com.kcops.mcp.audit.AuditDirection;
 import com.kcops.mcp.audit.AuditLogger;
 import com.kcops.mcp.config.KcopsProperties;
 import com.kcops.mcp.detector.Finding;
+import com.kcops.mcp.detector.PolicyCategory;
 import com.kcops.mcp.detector.RequestDetector;
 import com.kcops.mcp.detector.ResponseDetector;
 import com.kcops.mcp.mask.Masker;
@@ -77,7 +78,8 @@ public class McpProxyHandler {
         PolicyDecision requestDecision = policyEngine.decide(Direction.REQUEST, findings);
         long requestLatency = Duration.between(started, Instant.now()).toMillis();
         auditLogger.log(traceId, AuditDirection.AGENT_TO_MCP_SERVER, properties.getUpstreamUrl(),
-                request.tool(), requestDecision, requestLatency);
+                request.tool(), requestDecision, requestLatency,
+                requestDecision.action() == Action.MASK, false);
         if (requestDecision.action() == Action.BLOCK || requestDecision.action() == Action.REQUIRE_APPROVAL) {
             return decisionResponse(request.id(), requestDecision);
         }
@@ -115,7 +117,9 @@ public class McpProxyHandler {
         PolicyDecision responseDecision = policyEngine.decide(Direction.RESPONSE, findings);
         long latency = Duration.between(upstreamStarted, Instant.now()).toMillis();
         auditLogger.log(traceId, AuditDirection.MCP_SERVER_TO_AGENT, properties.getUpstreamUrl(),
-                request.tool(), responseDecision, latency);
+                request.tool(), responseDecision, latency,
+                responseDecision.action() == Action.MASK,
+                findings.stream().anyMatch(finding -> finding.category() == PolicyCategory.FINGERPRINT));
         if (responseDecision.action() == Action.BLOCK || responseDecision.action() == Action.REQUIRE_APPROVAL) {
             JsonNode id = response.id() == null ? request.id() : response.id();
             return decisionResponse(id, responseDecision);

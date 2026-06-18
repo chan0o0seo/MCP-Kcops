@@ -12,6 +12,8 @@ public record AuditRecord(
         Action decision,
         String reason,
         List<String> detectors,
+        boolean piiMasked,
+        boolean fingerprintChanged,
         long latencyMs,
         String prevHash,
         String hash

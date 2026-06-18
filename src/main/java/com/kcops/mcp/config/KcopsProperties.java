@@ -13,6 +13,7 @@ public class KcopsProperties {
     private Mode mode = Mode.ENFORCE;
     private String upstreamUrl = "http://localhost:8090/mcp";
     private String auditLogPath = "logs/audit.jsonl";
+    private String fingerprintStorePath = "logs/fingerprints.json";
     private Request request = new Request();
     private Response response = new Response();
 
@@ -43,6 +44,14 @@ public class KcopsProperties {
 
     public void setAuditLogPath(String auditLogPath) {
         this.auditLogPath = auditLogPath;
+    }
+
+    public String getFingerprintStorePath() {
+        return fingerprintStorePath;
+    }
+
+    public void setFingerprintStorePath(String fingerprintStorePath) {
+        this.fingerprintStorePath = fingerprintStorePath;
     }
 
     public Request getRequest() {
@@ -112,6 +121,7 @@ public class KcopsProperties {
     public static class Response {
         private Injection injection = new Injection();
         private Pii pii = new Pii(Action.MASK);
+        private Fingerprint fingerprint = new Fingerprint();
 
         public Injection getInjection() {
             return injection;
@@ -127,6 +137,14 @@ public class KcopsProperties {
 
         public void setPii(Pii pii) {
             this.pii = pii;
+        }
+
+        public Fingerprint getFingerprint() {
+            return fingerprint;
+        }
+
+        public void setFingerprint(Fingerprint fingerprint) {
+            this.fingerprint = fingerprint;
         }
     }
 
@@ -288,6 +306,18 @@ public class KcopsProperties {
 
         public void setTypes(Map<String, List<String>> types) {
             this.types = types;
+        }
+    }
+
+    public static class Fingerprint {
+        private Action action = Action.REQUIRE_APPROVAL;
+
+        public Action getAction() {
+            return action;
+        }
+
+        public void setAction(Action action) {
+            this.action = action;
         }
     }
 }

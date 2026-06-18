@@ -32,6 +32,9 @@ public class PromptInjectionResponseDetector implements ResponseDetector {
 
     @Override
     public List<Finding> inspect(McpResponse resp) {
+        if (resp.result() != null && resp.result().path("tools").isArray()) {
+            return List.of();
+        }
         String text = resp.rawBody() == null ? "" : resp.rawBody();
         KcopsProperties.Injection injection = properties.getResponse().getInjection();
         String lowered = inspectionText(text, injection.isDecodeBase64()).toLowerCase(Locale.ROOT);

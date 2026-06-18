@@ -44,6 +44,19 @@ public class AuditLogger {
             PolicyDecision decision,
             long latencyMs
     ) {
+        return log(traceId, direction, server, tool, decision, latencyMs, false, false);
+    }
+
+    public synchronized AuditRecord log(
+            String traceId,
+            AuditDirection direction,
+            String server,
+            String tool,
+            PolicyDecision decision,
+            long latencyMs,
+            boolean piiMasked,
+            boolean fingerprintChanged
+    ) {
         String prev = previousHash == null ? GENESIS : previousHash;
         AuditRecord withoutHash = new AuditRecord(
                 traceId,
@@ -54,6 +67,8 @@ public class AuditLogger {
                 decision.action(),
                 decision.reason(),
                 decision.detectors(),
+                piiMasked,
+                fingerprintChanged,
                 latencyMs,
                 prev,
                 null
@@ -68,6 +83,8 @@ public class AuditLogger {
                 withoutHash.decision(),
                 withoutHash.reason(),
                 withoutHash.detectors(),
+                withoutHash.piiMasked(),
+                withoutHash.fingerprintChanged(),
                 withoutHash.latencyMs(),
                 withoutHash.prevHash(),
                 hash
@@ -153,6 +170,8 @@ public class AuditLogger {
         values.put("decision", record.decision());
         values.put("reason", record.reason());
         values.put("detectors", record.detectors() == null ? List.of() : record.detectors());
+        values.put("piiMasked", record.piiMasked());
+        values.put("fingerprintChanged", record.fingerprintChanged());
         values.put("latencyMs", record.latencyMs());
         values.put("prevHash", record.prevHash());
         try {
