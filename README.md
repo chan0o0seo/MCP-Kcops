@@ -2,6 +2,8 @@
 
 Spring Boot WebFlux based MCP Runtime Firewall walking skeleton. It does not call any external guardrail API; request and response inspection is driven by local detectors and YAML policy.
 
+감사·지문·앵커의 블로킹 파일 IO는 `boundedElastic`로 오프로드되어 Netty 이벤트 루프를 막지 않는다.
+
 ## 감사 무결성
 
 감사 무결성의 보장 범위는 다음과 같다.
