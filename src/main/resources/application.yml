@@ -12,6 +12,9 @@ kcops:
     maxRequestBytes: 262144
     maxResponseBytes: 262144
     overLimitAction: require_approval
+  # 운영 시 환경변수/커맨드라인 오버라이드(`--kcops.admin.token=...`)로 주입; 비어 있으면 관리자 API 비활성
+  admin:
+    token: ""
   approval:
     enabled: true
   request:

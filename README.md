@@ -45,6 +45,26 @@ Terminal 2 runs the proxy on port 8080:
 
 Audit logs are written as JSON Lines to `logs/audit.jsonl` by default.
 
+## 관리자 API 인증
+
+`/admin/**` API는 `kcops.admin.token`으로 보호된다. 기본값은 빈 문자열이며, 이 경우 관리자 API는 fail-closed 방식으로 비활성화되어 HTTP 503을 반환한다. 운영 환경에서는 설정 파일에 토큰을 저장하지 말고 환경변수 또는 커맨드라인으로 주입한다.
+
+```powershell
+$env:KCOPS_ADMIN_TOKEN = "secret"
+.\gradlew.bat bootRun
+
+# 또는 커맨드라인 오버라이드
+.\gradlew.bat bootRun --args="--kcops.admin.token=secret"
+```
+
+관리자 요청은 Bearer 토큰을 전달해야 한다.
+
+```bash
+curl -H "Authorization: Bearer secret" http://localhost:8080/admin/approvals
+```
+
+보조 호환 헤더로 `X-Kcops-Admin-Token: secret`도 사용할 수 있다. `/mcp`는 관리자 인증 대상이 아니다.
+
 ## 크기 상한과 업스트림 장애 처리
 
 프록시는 기획서 6.7의 일부로 요청·응답 버퍼 크기와 업스트림 응답 시간을 제한한다.

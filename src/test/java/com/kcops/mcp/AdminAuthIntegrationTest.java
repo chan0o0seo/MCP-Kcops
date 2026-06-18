@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,7 +16,7 @@ import reactor.netty.DisposableServer;
 import reactor.netty.http.server.HttpServer;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-class AuditAdminIntegrationTest {
+class AdminAuthIntegrationTest {
 
     private static final DisposableServer upstream = HttpServer.create()
             .host("127.0.0.1")
@@ -31,18 +30,17 @@ class AuditAdminIntegrationTest {
             })
             .bindNow();
     private static final Path tempDir = createTempDir();
-    private static final Path auditPath = tempDir.resolve("audit.jsonl");
-    private static final Path anchorPath = tempDir.resolve("audit-anchor.jsonl");
 
     @Autowired
     WebTestClient webTestClient;
 
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) {
-        registry.add("kcops.upstream-url", () -> "http://127.0.0.1:" + upstream.port() + "/mcp");
-        registry.add("kcops.audit-log-path", auditPath::toString);
-        registry.add("kcops.audit-anchor-path", anchorPath::toString);
         registry.add("kcops.admin.token", () -> "test-admin-token");
+        registry.add("kcops.upstream-url", () -> "http://127.0.0.1:" + upstream.port() + "/mcp");
+        registry.add("kcops.audit-log-path", () -> tempDir.resolve("audit.jsonl").toString());
+        registry.add("kcops.audit-anchor-path", () -> tempDir.resolve("audit-anchor.jsonl").toString());
+        registry.add("kcops.fingerprint-store-path", () -> tempDir.resolve("fingerprints.json").toString());
     }
 
     @AfterAll
@@ -51,47 +49,48 @@ class AuditAdminIntegrationTest {
     }
 
     @Test
-    void publishesAnchorVerifiesTrafficAndReportsTamperedLine() throws Exception {
+    void rejectsMissingAdminToken() {
+        webTestClient.get().uri("/admin/approvals")
+                .exchange()
+                .expectStatus().isUnauthorized()
+                .expectHeader().contentType("application/json;charset=UTF-8")
+                .expectBody()
+                .jsonPath("$.error").isEqualTo("unauthorized");
+    }
+
+    @Test
+    void rejectsWrongAdminToken() {
+        webTestClient.get().uri("/admin/approvals")
+                .header("Authorization", "Bearer wrong")
+                .exchange()
+                .expectStatus().isUnauthorized()
+                .expectBody()
+                .jsonPath("$.error").isEqualTo("unauthorized");
+    }
+
+    @Test
+    void acceptsCorrectAdminToken() {
+        webTestClient.get().uri("/admin/approvals")
+                .header("Authorization", "Bearer test-admin-token")
+                .exchange()
+                .expectStatus().isOk();
+    }
+
+    @Test
+    void doesNotProtectMcpRoute() {
         String request = """
                 {"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"calendar_lookup","arguments":{}}}
                 """;
+
         webTestClient.post().uri("/mcp")
                 .bodyValue(request)
                 .exchange()
                 .expectStatus().isOk();
-
-        webTestClient.post().uri("/admin/audit/anchor")
-                .header("Authorization", "Bearer test-admin-token")
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.recordCount").isEqualTo(2);
-
-        webTestClient.get().uri("/admin/audit/verify")
-                .header("Authorization", "Bearer test-admin-token")
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.valid").isEqualTo(true)
-                .jsonPath("$.brokenAtLine").isEqualTo(-1)
-                .jsonPath("$.anchorConsistent").isEqualTo(true);
-
-        List<String> lines = Files.readAllLines(auditPath, StandardCharsets.UTF_8);
-        lines.set(0, lines.get(0).replace("NO_FINDINGS", "ALTERED"));
-        Files.write(auditPath, lines, StandardCharsets.UTF_8);
-
-        webTestClient.get().uri("/admin/audit/verify")
-                .header("Authorization", "Bearer test-admin-token")
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.valid").isEqualTo(false)
-                .jsonPath("$.brokenAtLine").isEqualTo(1);
     }
 
     private static Path createTempDir() {
         try {
-            return Files.createTempDirectory("kcops-audit-admin-");
+            return Files.createTempDirectory("kcops-admin-auth-");
         } catch (IOException ex) {
             throw new IllegalStateException(ex);
         }

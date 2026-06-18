@@ -45,6 +45,7 @@ class ApprovalIntegrationTest {
     static void properties(DynamicPropertyRegistry registry) {
         registry.add("kcops.upstream-url", () -> "http://127.0.0.1:" + upstream.port() + "/mcp");
         registry.add("kcops.audit-log-path", () -> tempDir.resolve("audit.jsonl").toString());
+        registry.add("kcops.admin.token", () -> "test-admin-token");
         registry.add("kcops.approval.enabled", () -> "true");
     }
 
@@ -72,6 +73,7 @@ class ApprovalIntegrationTest {
 
         String approvedTraceId = firstApproval.path("traceId").asText();
         webTestClient.post().uri("/admin/approvals/{traceId}/approve", approvedTraceId)
+                .header("Authorization", "Bearer test-admin-token")
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody(JsonNode.class)
@@ -88,6 +90,7 @@ class ApprovalIntegrationTest {
         String deniedTraceId = secondApproval.path("traceId").asText();
 
         webTestClient.post().uri("/admin/approvals/{traceId}/deny", deniedTraceId)
+                .header("Authorization", "Bearer test-admin-token")
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
@@ -95,6 +98,7 @@ class ApprovalIntegrationTest {
                 .jsonPath("$.traceId").isEqualTo(deniedTraceId);
 
         webTestClient.post().uri("/admin/approvals/{traceId}/approve", "missing-trace-id")
+                .header("Authorization", "Bearer test-admin-token")
                 .exchange()
                 .expectStatus().isNotFound();
 
@@ -123,6 +127,7 @@ class ApprovalIntegrationTest {
 
     private JsonNode pendingApprovals() {
         return webTestClient.get().uri("/admin/approvals")
+                .header("Authorization", "Bearer test-admin-token")
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody(JsonNode.class)
