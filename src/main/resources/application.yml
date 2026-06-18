@@ -7,6 +7,11 @@ kcops:
   auditLogPath: logs/audit.jsonl
   auditAnchorPath: logs/audit-anchor.jsonl
   fingerprintStorePath: logs/fingerprints.json
+  upstreamTimeoutMs: 10000
+  limits:
+    maxRequestBytes: 262144
+    maxResponseBytes: 262144
+    overLimitAction: require_approval
   approval:
     enabled: true
   request:

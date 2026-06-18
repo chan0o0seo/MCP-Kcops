@@ -15,6 +15,8 @@ public class KcopsProperties {
     private String auditLogPath = "logs/audit.jsonl";
     private String auditAnchorPath = "logs/audit-anchor.jsonl";
     private String fingerprintStorePath = "logs/fingerprints.json";
+    private long upstreamTimeoutMs = 10000;
+    private Limits limits = new Limits();
     private Approval approval = new Approval();
     private Request request = new Request();
     private Response response = new Response();
@@ -64,6 +66,22 @@ public class KcopsProperties {
         this.fingerprintStorePath = fingerprintStorePath;
     }
 
+    public long getUpstreamTimeoutMs() {
+        return upstreamTimeoutMs;
+    }
+
+    public void setUpstreamTimeoutMs(long upstreamTimeoutMs) {
+        this.upstreamTimeoutMs = upstreamTimeoutMs;
+    }
+
+    public Limits getLimits() {
+        return limits;
+    }
+
+    public void setLimits(Limits limits) {
+        this.limits = limits;
+    }
+
     public Approval getApproval() {
         return approval;
     }
@@ -86,6 +104,36 @@ public class KcopsProperties {
 
     public void setResponse(Response response) {
         this.response = response;
+    }
+
+    public static class Limits {
+        private int maxRequestBytes = 262144;
+        private int maxResponseBytes = 262144;
+        private Action overLimitAction = Action.REQUIRE_APPROVAL;
+
+        public int getMaxRequestBytes() {
+            return maxRequestBytes;
+        }
+
+        public void setMaxRequestBytes(int maxRequestBytes) {
+            this.maxRequestBytes = maxRequestBytes;
+        }
+
+        public int getMaxResponseBytes() {
+            return maxResponseBytes;
+        }
+
+        public void setMaxResponseBytes(int maxResponseBytes) {
+            this.maxResponseBytes = maxResponseBytes;
+        }
+
+        public Action getOverLimitAction() {
+            return overLimitAction;
+        }
+
+        public void setOverLimitAction(Action overLimitAction) {
+            this.overLimitAction = overLimitAction;
+        }
     }
 
     public static class Approval {

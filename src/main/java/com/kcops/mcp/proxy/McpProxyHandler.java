@@ -25,9 +25,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.core.io.buffer.DataBufferLimitException;
 import org.springframework.http.MediaType;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
@@ -64,14 +66,22 @@ public class McpProxyHandler {
         this.policyEngine = policyEngine;
         this.auditLogger = auditLogger;
         this.pendingApprovalStore = pendingApprovalStore;
-        this.webClient = webClientBuilder.build();
+        this.webClient = webClientBuilder
+                .exchangeStrategies(ExchangeStrategies.builder()
+                        .codecs(codecs -> codecs.defaultCodecs()
+                                .maxInMemorySize(properties.getLimits().getMaxResponseBytes()))
+                        .build())
+                .build();
     }
 
     public Mono<ServerResponse> handle(ServerRequest serverRequest) {
         String traceId = UUID.randomUUID().toString();
         Instant started = Instant.now();
         return serverRequest.bodyToMono(String.class)
-                .flatMap(body -> handleBuffered(traceId, started, body));
+                .flatMap(body -> handleBuffered(traceId, started, body))
+                .switchIfEmpty(Mono.defer(() -> handleEmptyRequest(traceId, started)))
+                .onErrorResume(DataBufferLimitException.class,
+                        ex -> handleRequestTooLarge(traceId, started));
     }
 
     private Mono<ServerResponse> handleBuffered(String traceId, Instant started, String body) {
@@ -100,6 +110,14 @@ public class McpProxyHandler {
             if (!Masker.hasSpans(findings)) {
                 PolicyDecision approvalDecision = new PolicyDecision(Action.REQUIRE_APPROVAL, requestDecision.reason(),
                         requestDecision.detectors(), requestDecision.categories());
+                if (properties.getApproval().isEnabled()) {
+                    pendingApprovalStore.add(
+                            traceId,
+                            AuditDirection.AGENT_TO_MCP_SERVER,
+                            request.tool(),
+                            approvalDecision
+                    );
+                }
                 return decisionResponse(request.id(), approvalDecision);
             }
             upstreamRequestBody = Masker.mask(body, findings);
@@ -112,8 +130,77 @@ public class McpProxyHandler {
                 .bodyValue(upstreamRequestBody)
                 .retrieve()
                 .bodyToMono(byte[].class)
+                .timeout(Duration.ofMillis(properties.getUpstreamTimeoutMs()))
                 .map(bytes -> new String(bytes, StandardCharsets.UTF_8))
-                .flatMap(upstreamBody -> handleUpstreamResponse(traceId, request, upstreamStarted, upstreamBody));
+                .flatMap(upstreamBody -> handleUpstreamResponse(traceId, request, upstreamStarted, upstreamBody))
+                .onErrorResume(ex -> handleUpstreamError(traceId, request, upstreamStarted, ex));
+    }
+
+    private Mono<ServerResponse> handleEmptyRequest(String traceId, Instant started) {
+        PolicyDecision decision = new PolicyDecision(Action.BLOCK, "INVALID_REQUEST", List.of(), List.of());
+        auditLogger.log(traceId, AuditDirection.AGENT_TO_MCP_SERVER, properties.getUpstreamUrl(),
+                null, decision, Duration.between(started, Instant.now()).toMillis(),
+                false, false);
+        return errorResponse(null, decision, -32600, "Invalid Request");
+    }
+
+    private Mono<ServerResponse> handleRequestTooLarge(String traceId, Instant started) {
+        PolicyDecision decision = new PolicyDecision(
+                properties.getLimits().getOverLimitAction(),
+                "REQUEST_TOO_LARGE",
+                List.of("request_size_limit"),
+                List.of()
+        );
+        auditLogger.log(traceId, AuditDirection.AGENT_TO_MCP_SERVER, properties.getUpstreamUrl(),
+                null, decision, Duration.between(started, Instant.now()).toMillis(),
+                false, false);
+        if (decision.action() == Action.REQUIRE_APPROVAL && properties.getApproval().isEnabled()) {
+            pendingApprovalStore.add(
+                    traceId,
+                    AuditDirection.AGENT_TO_MCP_SERVER,
+                    null,
+                    decision
+            );
+        }
+        return errorResponse(null, decision, -32001, sizeLimitMessage(decision));
+    }
+
+    private Mono<ServerResponse> handleUpstreamError(
+            String traceId,
+            McpRequest request,
+            Instant upstreamStarted,
+            Throwable ex
+    ) {
+        boolean responseTooLarge = hasCause(ex, DataBufferLimitException.class);
+        PolicyDecision decision = new PolicyDecision(
+                Action.BLOCK,
+                responseTooLarge ? "RESPONSE_TOO_LARGE" : "UPSTREAM_UNAVAILABLE",
+                List.of(responseTooLarge ? "response_size_limit" : "upstream_error"),
+                List.of()
+        );
+        auditLogger.log(traceId, AuditDirection.MCP_SERVER_TO_AGENT, properties.getUpstreamUrl(),
+                request.tool(), decision, Duration.between(upstreamStarted, Instant.now()).toMillis(),
+                false, false);
+        return responseTooLarge
+                ? errorResponse(request.id(), decision, -32001, "MCP upstream response too large")
+                : errorResponse(request.id(), decision, -32002, "MCP upstream unavailable");
+    }
+
+    private boolean hasCause(Throwable ex, Class<? extends Throwable> type) {
+        Throwable current = ex;
+        while (current != null) {
+            if (type.isInstance(current)) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
+    }
+
+    private String sizeLimitMessage(PolicyDecision decision) {
+        return decision.action() == Action.REQUIRE_APPROVAL
+                ? "MCP request requires approval by Kcops policy"
+                : "MCP request blocked by Kcops policy";
     }
 
     private Mono<ServerResponse> handleUpstreamResponse(
@@ -167,6 +254,22 @@ public class McpProxyHandler {
     }
 
     private Mono<ServerResponse> decisionResponse(JsonNode id, PolicyDecision decision) {
+        return errorResponse(
+                id,
+                decision,
+                -32001,
+                decision.action() == Action.REQUIRE_APPROVAL
+                        ? "MCP request requires approval by Kcops policy"
+                        : "MCP request blocked by Kcops policy"
+        );
+    }
+
+    private Mono<ServerResponse> errorResponse(
+            JsonNode id,
+            PolicyDecision decision,
+            int code,
+            String message
+    ) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("jsonrpc", "2.0");
         body.put("id", id);
@@ -174,10 +277,8 @@ public class McpProxyHandler {
         body.put("reason", decision.reason());
         body.put("detectors", decision.detectors());
         body.put("error", Map.of(
-                "code", -32001,
-                "message", decision.action() == Action.REQUIRE_APPROVAL
-                        ? "MCP request requires approval by Kcops policy"
-                        : "MCP request blocked by Kcops policy"
+                "code", code,
+                "message", message
         ));
         return ServerResponse.ok().contentType(APPLICATION_JSON_UTF8).bodyValue(body);
     }
