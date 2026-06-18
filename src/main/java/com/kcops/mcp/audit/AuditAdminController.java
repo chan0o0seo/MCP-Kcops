@@ -4,10 +4,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kcops.mcp.config.KcopsProperties;
 import java.nio.file.Path;
 import org.springframework.context.annotation.Profile;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 @RestController
 @RequestMapping("/admin/audit")
@@ -29,16 +32,18 @@ public class AuditAdminController {
     }
 
     @GetMapping("/verify")
-    public VerificationResult verify() {
-        return AuditLogger.verifyDetailed(
-                Path.of(properties.getAuditLogPath()),
-                Path.of(properties.getAuditAnchorPath()),
-                objectMapper
-        );
+    public Mono<ResponseEntity<VerificationResult>> verify() {
+        return Mono.fromCallable(() -> ResponseEntity.ok(AuditLogger.verifyDetailed(
+                        Path.of(properties.getAuditLogPath()),
+                        Path.of(properties.getAuditAnchorPath()),
+                        objectMapper
+                )))
+                .subscribeOn(Schedulers.boundedElastic());
     }
 
     @PostMapping("/anchor")
-    public AnchorEntry publishAnchor() {
-        return anchorStore.publish();
+    public Mono<ResponseEntity<AnchorEntry>> publishAnchor() {
+        return Mono.fromCallable(() -> ResponseEntity.ok(anchorStore.publish()))
+                .subscribeOn(Schedulers.boundedElastic());
     }
 }

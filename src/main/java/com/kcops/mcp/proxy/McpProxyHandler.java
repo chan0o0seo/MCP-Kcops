@@ -34,6 +34,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 @Component
 @Profile("!mock")
@@ -78,6 +79,7 @@ public class McpProxyHandler {
         String traceId = UUID.randomUUID().toString();
         Instant started = Instant.now();
         return serverRequest.bodyToMono(String.class)
+                .publishOn(Schedulers.boundedElastic())
                 .flatMap(body -> handleBuffered(traceId, started, body))
                 .switchIfEmpty(Mono.defer(() -> handleEmptyRequest(traceId, started)))
                 .onErrorResume(DataBufferLimitException.class,
@@ -131,6 +133,7 @@ public class McpProxyHandler {
                 .retrieve()
                 .bodyToMono(byte[].class)
                 .timeout(Duration.ofMillis(properties.getUpstreamTimeoutMs()))
+                .publishOn(Schedulers.boundedElastic())
                 .map(bytes -> new String(bytes, StandardCharsets.UTF_8))
                 .flatMap(upstreamBody -> handleUpstreamResponse(traceId, request, upstreamStarted, upstreamBody))
                 .onErrorResume(ex -> handleUpstreamError(traceId, request, upstreamStarted, ex));
