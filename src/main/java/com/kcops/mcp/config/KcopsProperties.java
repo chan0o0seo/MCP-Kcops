@@ -17,6 +17,7 @@ public class KcopsProperties {
     private String fingerprintStorePath = "logs/fingerprints.json";
     private long upstreamTimeoutMs = 10000;
     private Limits limits = new Limits();
+    private Admin admin = new Admin();
     private Approval approval = new Approval();
     private Request request = new Request();
     private Response response = new Response();
@@ -82,6 +83,14 @@ public class KcopsProperties {
         this.limits = limits;
     }
 
+    public Admin getAdmin() {
+        return admin;
+    }
+
+    public void setAdmin(Admin admin) {
+        this.admin = admin;
+    }
+
     public Approval getApproval() {
         return approval;
     }
@@ -133,6 +142,18 @@ public class KcopsProperties {
 
         public void setOverLimitAction(Action overLimitAction) {
             this.overLimitAction = overLimitAction;
+        }
+    }
+
+    public static class Admin {
+        private String token = "";
+
+        public String getToken() {
+            return token;
+        }
+
+        public void setToken(String token) {
+            this.token = token;
         }
     }
 

@@ -56,6 +56,7 @@ class ProxyHardeningIntegrationTest {
         registry.add("kcops.audit-log-path", () -> tempDir.resolve("audit.jsonl").toString());
         registry.add("kcops.audit-anchor-path", () -> tempDir.resolve("audit-anchor.jsonl").toString());
         registry.add("kcops.fingerprint-store-path", () -> tempDir.resolve("fingerprints.json").toString());
+        registry.add("kcops.admin.token", () -> "test-admin-token");
         registry.add("kcops.limits.max-request-bytes", () -> "512");
         registry.add("kcops.limits.max-response-bytes", () -> "512");
         registry.add("kcops.limits.over-limit-action", () -> "require_approval");
@@ -182,6 +183,7 @@ class ProxyHardeningIntegrationTest {
 
     private JsonNode pendingApprovals() {
         return webTestClient.get().uri("/admin/approvals")
+                .header("Authorization", "Bearer test-admin-token")
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody(JsonNode.class)
