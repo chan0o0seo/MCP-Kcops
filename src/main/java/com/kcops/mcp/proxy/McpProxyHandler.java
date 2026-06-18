@@ -3,6 +3,7 @@ package com.kcops.mcp.proxy;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.kcops.mcp.approval.PendingApprovalStore;
 import com.kcops.mcp.audit.AuditDirection;
 import com.kcops.mcp.audit.AuditLogger;
 import com.kcops.mcp.config.KcopsProperties;
@@ -42,6 +43,7 @@ public class McpProxyHandler {
     private final List<ResponseDetector> responseDetectors;
     private final PolicyEngine policyEngine;
     private final AuditLogger auditLogger;
+    private final PendingApprovalStore pendingApprovalStore;
     private final WebClient webClient;
     private static final MediaType APPLICATION_JSON_UTF8 = new MediaType("application", "json", StandardCharsets.UTF_8);
 
@@ -52,6 +54,7 @@ public class McpProxyHandler {
             List<ResponseDetector> responseDetectors,
             PolicyEngine policyEngine,
             AuditLogger auditLogger,
+            PendingApprovalStore pendingApprovalStore,
             WebClient.Builder webClientBuilder
     ) {
         this.objectMapper = objectMapper;
@@ -60,6 +63,7 @@ public class McpProxyHandler {
         this.responseDetectors = responseDetectors;
         this.policyEngine = policyEngine;
         this.auditLogger = auditLogger;
+        this.pendingApprovalStore = pendingApprovalStore;
         this.webClient = webClientBuilder.build();
     }
 
@@ -80,6 +84,14 @@ public class McpProxyHandler {
         auditLogger.log(traceId, AuditDirection.AGENT_TO_MCP_SERVER, properties.getUpstreamUrl(),
                 request.tool(), requestDecision, requestLatency,
                 requestDecision.action() == Action.MASK, false);
+        if (requestDecision.action() == Action.REQUIRE_APPROVAL && properties.getApproval().isEnabled()) {
+            pendingApprovalStore.add(
+                    traceId,
+                    AuditDirection.AGENT_TO_MCP_SERVER,
+                    request.tool(),
+                    requestDecision
+            );
+        }
         if (requestDecision.action() == Action.BLOCK || requestDecision.action() == Action.REQUIRE_APPROVAL) {
             return decisionResponse(request.id(), requestDecision);
         }
@@ -120,6 +132,14 @@ public class McpProxyHandler {
                 request.tool(), responseDecision, latency,
                 responseDecision.action() == Action.MASK,
                 findings.stream().anyMatch(finding -> finding.category() == PolicyCategory.FINGERPRINT));
+        if (responseDecision.action() == Action.REQUIRE_APPROVAL && properties.getApproval().isEnabled()) {
+            pendingApprovalStore.add(
+                    traceId,
+                    AuditDirection.MCP_SERVER_TO_AGENT,
+                    request.tool(),
+                    responseDecision
+            );
+        }
         if (responseDecision.action() == Action.BLOCK || responseDecision.action() == Action.REQUIRE_APPROVAL) {
             JsonNode id = response.id() == null ? request.id() : response.id();
             return decisionResponse(id, responseDecision);
