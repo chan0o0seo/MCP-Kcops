@@ -5,6 +5,7 @@ kcops:
   mode: enforce
   upstreamUrl: http://localhost:8090/mcp
   auditLogPath: logs/audit.jsonl
+  fingerprintStorePath: logs/fingerprints.json
   request:
     toolCall:
       action: require_approval
@@ -23,6 +24,8 @@ kcops:
       action: require_approval
       detectors: [korean_rrn, korean_phone, email, korean_bank_account, korean_address, jwt, api_key, ssh_private_key]
   response:
+    fingerprint:
+      action: require_approval
     injection:
       action: block
       decodeBase64: true

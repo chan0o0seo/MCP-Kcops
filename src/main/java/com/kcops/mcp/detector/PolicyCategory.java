@@ -7,5 +7,6 @@ public enum PolicyCategory {
     SCOPE,
     PII,
     SECRET,
-    INJECTION
+    INJECTION,
+    FINGERPRINT
 }

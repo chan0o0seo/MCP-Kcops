@@ -40,4 +40,18 @@ class PolicyEngineTest {
         assertThat(decision.action()).isEqualTo(Action.LOG_ONLY);
         assertThat(decision.reason()).isEqualTo("PROMPT_INJECTION");
     }
+
+    @Test
+    void mapsResponseFingerprintToRequireApproval() {
+        KcopsProperties properties = new KcopsProperties();
+        PolicyEngine engine = new PolicyEngine(properties);
+
+        PolicyDecision decision = engine.decide(Direction.RESPONSE, List.of(
+                new Finding("tool_fingerprint", PolicyCategory.FINGERPRINT,
+                        "TOOL_DESCRIPTION_FINGERPRINT_CHANGED", Finding.Severity.HIGH)
+        ));
+
+        assertThat(decision.action()).isEqualTo(Action.REQUIRE_APPROVAL);
+        assertThat(decision.reason()).isEqualTo("TOOL_DESCRIPTION_FINGERPRINT_CHANGED");
+    }
 }
