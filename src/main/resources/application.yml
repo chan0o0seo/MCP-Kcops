@@ -6,6 +6,8 @@ kcops:
   upstreamUrl: http://localhost:8090/mcp
   auditLogPath: logs/audit.jsonl
   fingerprintStorePath: logs/fingerprints.json
+  approval:
+    enabled: true
   request:
     toolCall:
       action: require_approval

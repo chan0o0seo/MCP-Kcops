@@ -14,6 +14,7 @@ public class KcopsProperties {
     private String upstreamUrl = "http://localhost:8090/mcp";
     private String auditLogPath = "logs/audit.jsonl";
     private String fingerprintStorePath = "logs/fingerprints.json";
+    private Approval approval = new Approval();
     private Request request = new Request();
     private Response response = new Response();
 
@@ -54,6 +55,14 @@ public class KcopsProperties {
         this.fingerprintStorePath = fingerprintStorePath;
     }
 
+    public Approval getApproval() {
+        return approval;
+    }
+
+    public void setApproval(Approval approval) {
+        this.approval = approval;
+    }
+
     public Request getRequest() {
         return request;
     }
@@ -68,6 +77,18 @@ public class KcopsProperties {
 
     public void setResponse(Response response) {
         this.response = response;
+    }
+
+    public static class Approval {
+        private boolean enabled = true;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
     }
 
     public static class Request {
