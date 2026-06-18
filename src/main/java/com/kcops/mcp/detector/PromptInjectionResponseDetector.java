@@ -2,12 +2,22 @@ package com.kcops.mcp.detector;
 
 import com.kcops.mcp.config.KcopsProperties;
 import com.kcops.mcp.model.McpResponse;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
 
 @Component
 public class PromptInjectionResponseDetector implements ResponseDetector {
+
+    private static final String REASON = "PROMPT_INJECTION_DETECTED";
+    private static final String DEFAULT_TYPE = "prompt_injection";
+    private static final Pattern BASE64_TOKEN = Pattern.compile("[A-Za-z0-9+/]{16,}={0,2}");
 
     private final KcopsProperties properties;
 
@@ -23,12 +33,54 @@ public class PromptInjectionResponseDetector implements ResponseDetector {
     @Override
     public List<Finding> inspect(McpResponse resp) {
         String text = resp.rawBody() == null ? "" : resp.rawBody();
-        String lowered = text.toLowerCase(Locale.ROOT);
-        boolean matched = properties.getResponse().getInjection().getPatterns().stream()
-                .anyMatch(pattern -> lowered.contains(pattern.toLowerCase(Locale.ROOT)));
-        if (!matched) {
-            return List.of();
+        KcopsProperties.Injection injection = properties.getResponse().getInjection();
+        String lowered = inspectionText(text, injection.isDecodeBase64()).toLowerCase(Locale.ROOT);
+        Map<String, List<String>> types = injection.getTypes();
+
+        if (types == null || types.isEmpty()) {
+            return matchesAny(lowered, injection.getPatterns())
+                    ? List.of(finding(name()))
+                    : List.of();
         }
-        return List.of(new Finding(name(), PolicyCategory.INJECTION, "PROMPT_INJECTION", Finding.Severity.HIGH));
+
+        List<Finding> findings = new ArrayList<>();
+        types.forEach((type, patterns) -> {
+            if (matchesAny(lowered, patterns)) {
+                findings.add(finding(type));
+            }
+        });
+        if (matchesAny(lowered, injection.getPatterns())
+                && findings.stream().noneMatch(finding -> DEFAULT_TYPE.equals(finding.detector()))) {
+            findings.add(finding(DEFAULT_TYPE));
+        }
+        return List.copyOf(findings);
+    }
+
+    private String inspectionText(String text, boolean decodeBase64) {
+        if (!decodeBase64) {
+            return text;
+        }
+
+        StringBuilder combined = new StringBuilder(text);
+        Matcher matcher = BASE64_TOKEN.matcher(text);
+        while (matcher.find()) {
+            try {
+                byte[] decoded = Base64.getDecoder().decode(matcher.group());
+                combined.append('\n').append(new String(decoded, StandardCharsets.UTF_8));
+            } catch (IllegalArgumentException ignored) {
+                // Base64처럼 보이지만 유효하지 않은 토큰은 검사 대상에서 제외한다.
+            }
+        }
+        return combined.toString();
+    }
+
+    private boolean matchesAny(String lowered, List<String> patterns) {
+        return patterns != null && patterns.stream()
+                .filter(pattern -> pattern != null && !pattern.isEmpty())
+                .anyMatch(pattern -> lowered.contains(pattern.toLowerCase(Locale.ROOT)));
+    }
+
+    private Finding finding(String detector) {
+        return new Finding(detector, PolicyCategory.INJECTION, REASON, Finding.Severity.HIGH);
     }
 }

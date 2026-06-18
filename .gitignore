@@ -10,3 +10,5 @@ codex-run.log
 codex-last-msg.txt
 *.out
 HELP.md
+
+*-server.log
