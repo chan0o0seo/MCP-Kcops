@@ -1,9 +1,11 @@
 package com.kcops.mcp.detector.dlp;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 class JsonTextExtractorTest {
 
@@ -22,6 +24,21 @@ class JsonTextExtractorTest {
     @Test
     void isNullSafe() {
         assertThat(JsonTextExtractor.extract(null)).isEmpty();
+    }
+
+    @Test
+    void stopsAtMaximumDepthWithoutStackOverflow() {
+        ObjectNode root = objectMapper.createObjectNode();
+        root.put("visible", "shallow");
+        ObjectNode current = root;
+        for (int depth = 0; depth < 10_000; depth++) {
+            current = current.putObject("nested");
+        }
+        current.put("hidden", "too-deep");
+
+        String extracted = assertDoesNotThrow(() -> JsonTextExtractor.extract(root));
+
+        assertThat(extracted).contains("shallow").doesNotContain("too-deep");
     }
 
     private String unicodeEscape(String value) {

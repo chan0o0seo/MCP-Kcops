@@ -351,8 +351,8 @@ public class McpProxyHandler {
         body.put("jsonrpc", "2.0");
         body.put("id", id);
         body.put("decision", decision.action());
-        body.put("reason", decision.reason());
-        body.put("detectors", decision.detectors());
+        body.put("reason", properties.isDiscloseDetectors() ? decision.reason() : "POLICY_VIOLATION");
+        body.put("detectors", properties.isDiscloseDetectors() ? decision.detectors() : List.of());
         body.put("error", Map.of(
                 "code", code,
                 "message", message

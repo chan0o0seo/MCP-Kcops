@@ -7,6 +7,8 @@ kcops:
   auditLogPath: logs/audit.jsonl
   auditAnchorPath: logs/audit-anchor.jsonl
   fingerprintStorePath: logs/fingerprints.json
+  # 운영 시 false 권장 — 호출자에게 탐지 내역 비공개
+  discloseDetectors: true
   upstreamTimeoutMs: 10000
   limits:
     maxRequestBytes: 262144
@@ -36,6 +38,8 @@ kcops:
       action: require_approval
       detectors: [korean_rrn, korean_phone, email, korean_bank_account, korean_address, jwt, api_key, ssh_private_key]
   response:
+    toolMetadata:
+      action: require_approval
     fingerprint:
       action: require_approval
     injection:

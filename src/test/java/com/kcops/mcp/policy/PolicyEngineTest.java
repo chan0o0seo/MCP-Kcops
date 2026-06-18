@@ -54,4 +54,35 @@ class PolicyEngineTest {
         assertThat(decision.action()).isEqualTo(Action.REQUIRE_APPROVAL);
         assertThat(decision.reason()).isEqualTo("TOOL_DESCRIPTION_FINGERPRINT_CHANGED");
     }
+
+    @Test
+    void mapsResponseToolMetadataToRequireApproval() {
+        KcopsProperties properties = new KcopsProperties();
+        PolicyEngine engine = new PolicyEngine(properties);
+
+        PolicyDecision decision = engine.decide(Direction.RESPONSE, List.of(
+                new Finding("tool_metadata_injection", PolicyCategory.TOOL_METADATA,
+                        "TOOL_METADATA_INJECTION_SUSPECTED", Finding.Severity.HIGH)
+        ));
+
+        assertThat(decision.action()).isEqualTo(Action.REQUIRE_APPROVAL);
+        assertThat(decision.reason()).isEqualTo("TOOL_METADATA_INJECTION_SUSPECTED");
+    }
+
+    @Test
+    void fingerprintReasonWinsWhenFingerprintAndToolMetadataFireTogether() {
+        KcopsProperties properties = new KcopsProperties();
+        PolicyEngine engine = new PolicyEngine(properties);
+
+        PolicyDecision decision = engine.decide(Direction.RESPONSE, List.of(
+                new Finding("tool_metadata_injection", PolicyCategory.TOOL_METADATA,
+                        "TOOL_METADATA_INJECTION_SUSPECTED", Finding.Severity.HIGH),
+                new Finding("tool_fingerprint", PolicyCategory.FINGERPRINT,
+                        "TOOL_DESCRIPTION_FINGERPRINT_CHANGED", Finding.Severity.HIGH)
+        ));
+
+        assertThat(decision.action()).isEqualTo(Action.REQUIRE_APPROVAL);
+        assertThat(decision.reason()).isEqualTo("TOOL_DESCRIPTION_FINGERPRINT_CHANGED");
+        assertThat(decision.detectors()).containsExactly("tool_metadata_injection", "tool_fingerprint");
+    }
 }
