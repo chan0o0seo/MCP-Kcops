@@ -2,6 +2,19 @@
 
 Spring Boot WebFlux based MCP Runtime Firewall walking skeleton. It does not call any external guardrail API; request and response inspection is driven by local detectors and YAML policy.
 
+## 감사 무결성
+
+감사 무결성의 보장 범위는 다음과 같다.
+
+1. 해시 체인은 감사 로그의 단순 수정·중간 삭제를 **탐지**하며, 위·변조 자체를 방지하지는 않는다.
+2. 로컬 append-only 앵커는 앵커 게시 후 감사 로그 전체를 다시 계산한 공격을 앵커 해시 불일치로 탐지한다. 앵커가 없으면 전체 재계산 공격은 탐지할 수 없다.
+3. 감사 로그와 로컬 앵커를 모두 수정할 수 있는 동일 공격자에게는 무력화될 수 있다. 진짜 불변성은 외부 불변 저장소 또는 디지털 서명이 필요하다.
+
+관리자 API:
+
+- `POST /admin/audit/anchor`: 현재 감사 로그의 레코드 수와 최신 해시를 `logs/audit-anchor.jsonl`에 추가한다.
+- `GET /admin/audit/verify`: 해시 체인과 게시된 모든 앵커를 검증한다.
+
 ## Build
 
 ```bash
@@ -39,6 +52,7 @@ kcops:
   mode: enforce
   upstreamUrl: http://localhost:8090/mcp
   auditLogPath: logs/audit.jsonl
+  auditAnchorPath: logs/audit-anchor.jsonl
   request:
     toolCall:
       action: require_approval
