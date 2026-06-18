@@ -5,6 +5,7 @@ kcops:
   mode: enforce
   upstreamUrl: http://localhost:8090/mcp
   auditLogPath: logs/audit.jsonl
+  auditAnchorPath: logs/audit-anchor.jsonl
   fingerprintStorePath: logs/fingerprints.json
   approval:
     enabled: true

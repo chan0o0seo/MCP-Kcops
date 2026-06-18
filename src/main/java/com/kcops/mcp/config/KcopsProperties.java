@@ -13,6 +13,7 @@ public class KcopsProperties {
     private Mode mode = Mode.ENFORCE;
     private String upstreamUrl = "http://localhost:8090/mcp";
     private String auditLogPath = "logs/audit.jsonl";
+    private String auditAnchorPath = "logs/audit-anchor.jsonl";
     private String fingerprintStorePath = "logs/fingerprints.json";
     private Approval approval = new Approval();
     private Request request = new Request();
@@ -45,6 +46,14 @@ public class KcopsProperties {
 
     public void setAuditLogPath(String auditLogPath) {
         this.auditLogPath = auditLogPath;
+    }
+
+    public String getAuditAnchorPath() {
+        return auditAnchorPath;
+    }
+
+    public void setAuditAnchorPath(String auditAnchorPath) {
+        this.auditAnchorPath = auditAnchorPath;
     }
 
     public String getFingerprintStorePath() {

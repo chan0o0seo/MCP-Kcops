@@ -16,6 +16,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.springframework.stereotype.Component;
@@ -95,27 +96,85 @@ public class AuditLogger {
     }
 
     public static boolean verify(Path path, ObjectMapper objectMapper) {
-        if (!Files.exists(path)) {
+        return verifyDetailed(path, null, objectMapper).valid();
+    }
+
+    public static VerificationResult verifyDetailed(
+            Path logPath,
+            Path anchorPath,
+            ObjectMapper objectMapper
+    ) {
+        List<String> recordHashes = new ArrayList<>();
+        boolean valid = true;
+        int brokenAtLine = -1;
+        String previous = GENESIS;
+
+        if (logPath != null && Files.exists(logPath)) {
+            int lineNumber = 0;
+            try {
+                for (String line : Files.readAllLines(logPath, StandardCharsets.UTF_8)) {
+                    if (line.isBlank()) {
+                        continue;
+                    }
+                    lineNumber++;
+                    try {
+                        JsonNode node = objectMapper.readTree(line);
+                        String prevHash = node.path("prevHash").asText();
+                        String hash = node.path("hash").asText();
+                        AuditRecord record = objectMapper.treeToValue(node, AuditRecord.class);
+                        String expected = sha256Hex(prevHash + canonicalJsonWithoutHash(record, objectMapper));
+                        recordHashes.add(hash);
+                        if (brokenAtLine == -1
+                                && (!previous.equals(prevHash) || !expected.equals(hash))) {
+                            valid = false;
+                            brokenAtLine = lineNumber;
+                        }
+                        previous = hash;
+                    } catch (IOException | RuntimeException ex) {
+                        recordHashes.add(null);
+                        if (brokenAtLine == -1) {
+                            valid = false;
+                            brokenAtLine = lineNumber;
+                        }
+                    }
+                }
+            } catch (IOException ex) {
+                valid = false;
+                brokenAtLine = brokenAtLine == -1 ? Math.max(1, lineNumber + 1) : brokenAtLine;
+            }
+        }
+
+        boolean anchorConsistent = verifyAnchors(anchorPath, recordHashes, objectMapper);
+        return new VerificationResult(valid, brokenAtLine, anchorConsistent);
+    }
+
+    private static boolean verifyAnchors(
+            Path anchorPath,
+            List<String> recordHashes,
+            ObjectMapper objectMapper
+    ) {
+        if (anchorPath == null || !Files.exists(anchorPath)) {
             return true;
         }
         String previous = GENESIS;
         try {
-            for (String line : Files.readAllLines(path, StandardCharsets.UTF_8)) {
+            for (String line : Files.readAllLines(anchorPath, StandardCharsets.UTF_8)) {
                 if (line.isBlank()) {
                     continue;
                 }
-                JsonNode node = objectMapper.readTree(line);
-                String prevHash = node.path("prevHash").asText();
-                String hash = node.path("hash").asText();
-                AuditRecord record = objectMapper.treeToValue(node, AuditRecord.class);
-                String expected = sha256Hex(prevHash + canonicalJsonWithoutHash(record, objectMapper));
-                if (!previous.equals(prevHash) || !expected.equals(hash)) {
+                AnchorEntry anchor = objectMapper.readValue(line, AnchorEntry.class);
+                if (anchor.recordCount() < 0 || anchor.recordCount() > recordHashes.size()) {
                     return false;
                 }
-                previous = hash;
+                String anchoredHash = anchor.recordCount() == 0
+                        ? previous
+                        : recordHashes.get(anchor.recordCount() - 1);
+                if (!anchor.latestHash().equals(anchoredHash)) {
+                    return false;
+                }
             }
             return true;
-        } catch (IOException ex) {
+        } catch (IOException | RuntimeException ex) {
             return false;
         }
     }
