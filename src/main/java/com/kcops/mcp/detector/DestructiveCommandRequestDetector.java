@@ -1,6 +1,7 @@
 package com.kcops.mcp.detector;
 
 import com.kcops.mcp.config.KcopsProperties;
+import com.kcops.mcp.detector.dlp.JsonTextExtractor;
 import com.kcops.mcp.model.McpRequest;
 import java.util.List;
 import java.util.Locale;
@@ -22,7 +23,9 @@ public class DestructiveCommandRequestDetector implements RequestDetector {
 
     @Override
     public List<Finding> inspect(McpRequest req) {
-        String text = ((req.tool() == null ? "" : req.tool()) + " " + (req.rawBody() == null ? "" : req.rawBody()))
+        String text = ((req.tool() == null ? "" : req.tool())
+                + " " + (req.rawBody() == null ? "" : req.rawBody())
+                + "\n" + JsonTextExtractor.extract(req.raw()))
                 .toLowerCase(Locale.ROOT);
         boolean destructive = properties.getRequest().getDestructive().getPatterns().stream()
                 .filter(pattern -> pattern != null && !pattern.isBlank())

@@ -64,9 +64,9 @@ public final class SensitiveDataScanner {
                 continue;
             }
             matches.add(new SensitiveMatch("korean_rrn", PolicyCategory.PII,
-                    matcher.start(), matcher.start() + 6, '*', null));
+                    matcher.start(), matcher.start() + 6, '*', null, matcher.group()));
             matches.add(new SensitiveMatch("korean_rrn", PolicyCategory.PII,
-                    matcher.start() + 7, matcher.end(), '*', null));
+                    matcher.start() + 7, matcher.end(), '*', null, matcher.group()));
         }
     }
 
@@ -84,7 +84,7 @@ public final class SensitiveDataScanner {
         Matcher matcher = KOREAN_PHONE.matcher(text);
         while (matcher.find()) {
             matches.add(new SensitiveMatch("korean_phone", PolicyCategory.PII,
-                    matcher.start(3), matcher.end(3), '*', null));
+                    matcher.start(3), matcher.end(3), '*', null, matcher.group()));
         }
     }
 
@@ -94,7 +94,7 @@ public final class SensitiveDataScanner {
             int at = text.indexOf('@', matcher.start());
             if (at > matcher.start() && at < matcher.end()) {
                 matches.add(new SensitiveMatch("email", PolicyCategory.PII,
-                        matcher.start() + 1, at, '*', null));
+                        matcher.start() + 1, at, '*', null, matcher.group()));
             }
         }
     }
@@ -110,7 +110,8 @@ public final class SensitiveDataScanner {
             Matcher digitRun = Pattern.compile("\\d+").matcher(matcher.group());
             while (digitRun.find()) {
                 matches.add(new SensitiveMatch("korean_bank_account", PolicyCategory.PII,
-                        matcher.start() + digitRun.start(), matcher.start() + digitRun.end(), '*', null));
+                        matcher.start() + digitRun.start(), matcher.start() + digitRun.end(), '*', null,
+                        matcher.group()));
             }
         }
     }
@@ -123,7 +124,7 @@ public final class SensitiveDataScanner {
                 continue;
             }
             matches.add(new SensitiveMatch("korean_address", PolicyCategory.PII,
-                    matcher.start(2), matcher.end(2), '*', "****"));
+                    matcher.start(2), matcher.end(2), '*', "****", matcher.group()));
         }
     }
 
@@ -132,7 +133,7 @@ public final class SensitiveDataScanner {
         while (matcher.find()) {
             int keep = Math.min(4, matcher.end() - matcher.start());
             matches.add(new SensitiveMatch(detectorName, PolicyCategory.SECRET,
-                    matcher.start() + keep, matcher.end(), '*', null));
+                    matcher.start() + keep, matcher.end(), '*', null, matcher.group()));
         }
     }
 
@@ -140,7 +141,8 @@ public final class SensitiveDataScanner {
                                      List<SensitiveMatch> matches) {
         Matcher matcher = pattern.matcher(text);
         while (matcher.find()) {
-            matches.add(new SensitiveMatch(detectorName, category, matcher.start(), matcher.end(), '*', null));
+            matches.add(new SensitiveMatch(detectorName, category, matcher.start(), matcher.end(), '*', null,
+                    matcher.group()));
         }
     }
 
@@ -148,7 +150,8 @@ public final class SensitiveDataScanner {
                                         List<SensitiveMatch> matches) {
         Matcher matcher = pattern.matcher(text);
         while (matcher.find()) {
-            matches.add(new SensitiveMatch(detectorName, category, matcher.start(), matcher.end(), '*', "****"));
+            matches.add(new SensitiveMatch(detectorName, category, matcher.start(), matcher.end(), '*', "****",
+                    matcher.group()));
         }
     }
 }

@@ -8,6 +8,7 @@ public record SensitiveMatch(
         int start,
         int end,
         char maskChar,
-        String replacement
+        String replacement,
+        String value
 ) {
 }

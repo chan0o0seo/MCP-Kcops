@@ -1,6 +1,7 @@
 package com.kcops.mcp.approval;
 
 import com.kcops.mcp.audit.AuditDirection;
+import com.kcops.mcp.config.KcopsProperties;
 import com.kcops.mcp.policy.PolicyDecision;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -17,8 +18,13 @@ public class PendingApprovalStore {
 
     private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
     private final ConcurrentMap<String, PendingApproval> approvals = new ConcurrentHashMap<>();
+    private final int maxPending;
 
-    public void add(
+    public PendingApprovalStore(KcopsProperties properties) {
+        this.maxPending = Math.max(0, properties.getApproval().getMaxPending());
+    }
+
+    public synchronized void add(
             String traceId,
             AuditDirection direction,
             String tool,
@@ -38,6 +44,7 @@ public class PendingApprovalStore {
                 ApprovalStatus.PENDING
         );
         approvals.put(traceId, approval);
+        trimToLimit();
     }
 
     public List<PendingApproval> pending() {
@@ -60,7 +67,7 @@ public class PendingApprovalStore {
         return Optional.ofNullable(approvals.get(traceId));
     }
 
-    private Optional<PendingApproval> transition(String traceId, ApprovalStatus status) {
+    private synchronized Optional<PendingApproval> transition(String traceId, ApprovalStatus status) {
         AtomicReference<PendingApproval> updated = new AtomicReference<>();
         approvals.computeIfPresent(traceId, (key, current) -> {
             if (current.status() != ApprovalStatus.PENDING) {
@@ -71,5 +78,22 @@ public class PendingApprovalStore {
             return transitioned;
         });
         return Optional.ofNullable(updated.get());
+    }
+
+    private void trimToLimit() {
+        if (approvals.size() <= maxPending) {
+            return;
+        }
+        List<PendingApproval> evictionOrder = approvals.values().stream()
+                .sorted(java.util.Comparator
+                        .comparing((PendingApproval approval) -> approval.status() == ApprovalStatus.PENDING)
+                        .thenComparing(PendingApproval::createdAt)
+                        .thenComparing(PendingApproval::traceId))
+                .toList();
+        int removeCount = approvals.size() - maxPending;
+        for (int i = 0; i < removeCount; i++) {
+            PendingApproval approval = evictionOrder.get(i);
+            approvals.remove(approval.traceId(), approval);
+        }
     }
 }

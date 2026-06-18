@@ -1,6 +1,7 @@
 package com.kcops.mcp.approval;
 
 import com.kcops.mcp.audit.AuditDirection;
+import com.kcops.mcp.config.KcopsProperties;
 import com.kcops.mcp.detector.PolicyCategory;
 import com.kcops.mcp.policy.Action;
 import com.kcops.mcp.policy.PolicyDecision;
@@ -12,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class PendingApprovalStoreTest {
 
-    private final PendingApprovalStore store = new PendingApprovalStore();
+    private final PendingApprovalStore store = storeWithLimit(1000);
 
     @Test
     void addExposesOnlyPendingMetadataAndApproveTransitionsStatus() {
@@ -70,6 +71,26 @@ class PendingApprovalStoreTest {
                 .allMatch(index -> store.find("trace-" + index).isPresent())).isTrue();
     }
 
+    @Test
+    void evictsOldestCompletedBeforePendingAndKeepsConfiguredLimit() {
+        PendingApprovalStore limited = storeWithLimit(2);
+        limited.add("trace-1", AuditDirection.AGENT_TO_MCP_SERVER, "tool", decision());
+        limited.approve("trace-1");
+        limited.add("trace-2", AuditDirection.AGENT_TO_MCP_SERVER, "tool", decision());
+        limited.add("trace-3", AuditDirection.AGENT_TO_MCP_SERVER, "tool", decision());
+
+        assertThat(limited.find("trace-1")).isEmpty();
+        assertThat(limited.pending()).extracting(PendingApproval::traceId)
+                .containsExactly("trace-2", "trace-3");
+
+        limited.add("trace-4", AuditDirection.AGENT_TO_MCP_SERVER, "tool", decision());
+
+        assertThat(limited.pending()).hasSize(2);
+        assertThat(IntStream.rangeClosed(1, 4)
+                .filter(index -> limited.find("trace-" + index).isPresent())
+                .count()).isEqualTo(2);
+    }
+
     private PolicyDecision decision() {
         return new PolicyDecision(
                 Action.REQUIRE_APPROVAL,
@@ -77,5 +98,11 @@ class PendingApprovalStoreTest {
                 List.of("destructive_command", "high_risk_tool"),
                 List.of(PolicyCategory.DESTRUCTIVE, PolicyCategory.TOOL_CALL)
         );
+    }
+
+    private PendingApprovalStore storeWithLimit(int maxPending) {
+        KcopsProperties properties = new KcopsProperties();
+        properties.getApproval().setMaxPending(maxPending);
+        return new PendingApprovalStore(properties);
     }
 }

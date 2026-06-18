@@ -159,6 +159,7 @@ public class KcopsProperties {
 
     public static class Approval {
         private boolean enabled = true;
+        private int maxPending = 1000;
 
         public boolean isEnabled() {
             return enabled;
@@ -166,6 +167,14 @@ public class KcopsProperties {
 
         public void setEnabled(boolean enabled) {
             this.enabled = enabled;
+        }
+
+        public int getMaxPending() {
+            return maxPending;
+        }
+
+        public void setMaxPending(int maxPending) {
+            this.maxPending = maxPending;
         }
     }
 

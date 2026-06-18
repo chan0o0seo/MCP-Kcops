@@ -21,6 +21,7 @@ import com.kcops.mcp.policy.PolicyEngine;
 import java.time.Duration;
 import java.time.Instant;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -88,9 +89,15 @@ public class McpProxyHandler {
 
     private Mono<ServerResponse> handleBuffered(String traceId, Instant started, String body) {
         McpRequest request = parseRequest(body);
-        List<Finding> findings = requestDetectors.stream()
-                .flatMap(detector -> detector.inspect(request).stream())
-                .toList();
+        DetectionResult detection = inspectRequest(request);
+        List<Finding> findings = detection.findings();
+        if (!detection.failedDetectors().isEmpty()) {
+            PolicyDecision failureDecision = detectorErrorDecision(detection.failedDetectors());
+            auditLogger.log(traceId, AuditDirection.AGENT_TO_MCP_SERVER, properties.getUpstreamUrl(),
+                    request.tool(), failureDecision, Duration.between(started, Instant.now()).toMillis(),
+                    false, false);
+            return decisionResponse(request.id(), failureDecision);
+        }
         PolicyDecision requestDecision = policyEngine.decide(Direction.REQUEST, findings);
         long requestLatency = Duration.between(started, Instant.now()).toMillis();
         auditLogger.log(traceId, AuditDirection.AGENT_TO_MCP_SERVER, properties.getUpstreamUrl(),
@@ -213,10 +220,31 @@ public class McpProxyHandler {
             String upstreamBody
     ) {
         McpResponse response = parseResponse(upstreamBody);
-        List<Finding> findings = responseDetectors.stream()
-                .flatMap(detector -> detector.inspect(response).stream())
-                .toList();
+        DetectionResult detection = inspectResponse(response);
+        List<Finding> findings = detection.findings();
+        if (!detection.failedDetectors().isEmpty()) {
+            PolicyDecision failureDecision = detectorErrorDecision(detection.failedDetectors());
+            auditLogger.log(traceId, AuditDirection.MCP_SERVER_TO_AGENT, properties.getUpstreamUrl(),
+                    request.tool(), failureDecision, Duration.between(upstreamStarted, Instant.now()).toMillis(),
+                    false, false);
+            JsonNode id = response.id() == null ? request.id() : response.id();
+            return decisionResponse(id, failureDecision);
+        }
         PolicyDecision responseDecision = policyEngine.decide(Direction.RESPONSE, findings);
+        if (responseDecision.action() == Action.MASK) {
+            Finding unmaskable = findings.stream()
+                    .filter(finding -> finding.spans().isEmpty())
+                    .findFirst()
+                    .orElse(null);
+            if (unmaskable != null) {
+                responseDecision = new PolicyDecision(
+                        Action.BLOCK,
+                        unmaskable.reason(),
+                        responseDecision.detectors(),
+                        responseDecision.categories()
+                );
+            }
+        }
         long latency = Duration.between(upstreamStarted, Instant.now()).toMillis();
         auditLogger.log(traceId, AuditDirection.MCP_SERVER_TO_AGENT, properties.getUpstreamUrl(),
                 request.tool(), responseDecision, latency,
@@ -238,6 +266,52 @@ public class McpProxyHandler {
             return ServerResponse.ok().contentType(APPLICATION_JSON_UTF8).bodyValue(Masker.mask(upstreamBody, findings));
         }
         return ServerResponse.ok().contentType(APPLICATION_JSON_UTF8).bodyValue(upstreamBody);
+    }
+
+    private DetectionResult inspectRequest(McpRequest request) {
+        List<Finding> findings = new ArrayList<>();
+        List<String> failedDetectors = new ArrayList<>();
+        for (RequestDetector detector : requestDetectors) {
+            try {
+                findings.addAll(detector.inspect(request));
+            } catch (RuntimeException ex) {
+                failedDetectors.add(detectorName(detector));
+            }
+        }
+        return new DetectionResult(findings, failedDetectors);
+    }
+
+    private DetectionResult inspectResponse(McpResponse response) {
+        List<Finding> findings = new ArrayList<>();
+        List<String> failedDetectors = new ArrayList<>();
+        for (ResponseDetector detector : responseDetectors) {
+            try {
+                findings.addAll(detector.inspect(response));
+            } catch (RuntimeException ex) {
+                failedDetectors.add(detectorName(detector));
+            }
+        }
+        return new DetectionResult(findings, failedDetectors);
+    }
+
+    private String detectorName(RequestDetector detector) {
+        try {
+            return detector.name();
+        } catch (RuntimeException ex) {
+            return detector.getClass().getSimpleName();
+        }
+    }
+
+    private String detectorName(ResponseDetector detector) {
+        try {
+            return detector.name();
+        } catch (RuntimeException ex) {
+            return detector.getClass().getSimpleName();
+        }
+    }
+
+    private PolicyDecision detectorErrorDecision(List<String> failedDetectors) {
+        return new PolicyDecision(Action.BLOCK, "DETECTOR_ERROR", failedDetectors, List.of());
     }
 
     private McpRequest parseRequest(String body) {
@@ -284,5 +358,12 @@ public class McpProxyHandler {
                 "message", message
         ));
         return ServerResponse.ok().contentType(APPLICATION_JSON_UTF8).bodyValue(body);
+    }
+
+    private record DetectionResult(List<Finding> findings, List<String> failedDetectors) {
+        private DetectionResult {
+            findings = List.copyOf(findings);
+            failedDetectors = List.copyOf(failedDetectors);
+        }
     }
 }

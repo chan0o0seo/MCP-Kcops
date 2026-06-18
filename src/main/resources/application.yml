@@ -17,6 +17,7 @@ kcops:
     token: ""
   approval:
     enabled: true
+    maxPending: 1000
   request:
     toolCall:
       action: require_approval
