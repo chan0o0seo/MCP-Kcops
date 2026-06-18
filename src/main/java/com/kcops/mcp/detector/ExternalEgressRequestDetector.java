@@ -4,7 +4,6 @@ import com.kcops.mcp.config.KcopsProperties;
 import com.kcops.mcp.detector.dlp.SensitiveDataScanner;
 import com.kcops.mcp.detector.dlp.SensitiveMatch;
 import com.kcops.mcp.model.McpRequest;
-import java.util.ArrayList;
 import java.net.URI;
 import java.util.List;
 import java.util.Locale;
@@ -31,18 +30,14 @@ public class ExternalEgressRequestDetector implements RequestDetector {
     public List<Finding> inspect(McpRequest req) {
         String body = req.rawBody() == null ? "" : req.rawBody();
         String tool = req.tool() == null ? "" : req.tool();
-        List<Finding> findings = new ArrayList<>();
         List<SensitiveMatch> sensitiveMatches = SensitiveDataScanner.scan(body);
-        for (SensitiveMatch match : sensitiveMatches) {
-            findings.add(toSensitiveFinding(match));
-        }
 
         boolean riskyIntent = isHighRiskTool(tool) || containsEgressVerb(tool + " " + body);
         if (riskyIntent && hasDisallowedUrl(body)) {
             Finding.Severity severity = sensitiveMatches.isEmpty() ? Finding.Severity.MEDIUM : Finding.Severity.HIGH;
-            findings.add(new Finding(name(), PolicyCategory.EGRESS, "SENSITIVE_DATA_EGRESS_RISK", severity));
+            return List.of(new Finding(name(), PolicyCategory.EGRESS, "SENSITIVE_DATA_EGRESS_RISK", severity));
         }
-        return List.copyOf(findings);
+        return List.of();
     }
 
     private boolean isHighRiskTool(String tool) {
@@ -83,10 +78,4 @@ public class ExternalEgressRequestDetector implements RequestDetector {
                 .anyMatch(allowed -> normalized.equals(allowed) || normalized.endsWith("." + allowed));
     }
 
-    private Finding toSensitiveFinding(SensitiveMatch match) {
-        if ("api_key".equals(match.detectorName())) {
-            return new Finding(match.detectorName(), PolicyCategory.SECRET, "SECRET_IN_REQUEST_ARG", Finding.Severity.HIGH);
-        }
-        return new Finding(match.detectorName(), PolicyCategory.PII, "PII_IN_REQUEST_ARG", Finding.Severity.HIGH);
-    }
 }

@@ -1,6 +1,7 @@
 package com.kcops.mcp.mask;
 
 import com.kcops.mcp.detector.Finding;
+import java.util.Comparator;
 import java.util.List;
 
 public final class Masker {
@@ -13,23 +14,30 @@ public final class Masker {
             return source;
         }
 
-        char[] chars = source.toCharArray();
-        for (Finding finding : findings) {
-            for (MaskSpan span : finding.spans()) {
-                int start = Math.max(0, span.start());
-                int end = Math.min(chars.length, span.end());
-                if (start >= end) {
-                    continue;
-                }
-                for (int i = start; i < end; i++) {
-                    chars[i] = span.maskChar();
-                }
-            }
-        }
-        return new String(chars);
+        StringBuilder masked = new StringBuilder(source);
+        findings.stream()
+                .flatMap(finding -> finding.spans().stream())
+                .sorted(Comparator.comparingInt(MaskSpan::start).reversed())
+                .forEach(span -> applySpan(masked, span));
+        return masked.toString();
     }
 
     public static boolean hasSpans(List<Finding> findings) {
         return findings != null && findings.stream().anyMatch(finding -> !finding.spans().isEmpty());
+    }
+
+    private static void applySpan(StringBuilder masked, MaskSpan span) {
+        int start = Math.max(0, span.start());
+        int end = Math.min(masked.length(), span.end());
+        if (start >= end) {
+            return;
+        }
+        if (span.replacement() != null) {
+            masked.replace(start, end, span.replacement());
+            return;
+        }
+        for (int i = start; i < end; i++) {
+            masked.setCharAt(i, span.maskChar());
+        }
     }
 }

@@ -21,11 +21,11 @@ kcops:
       patterns: ["select *", "select * from", "전체 메일", "모든 파일", "/*"]
     pii:
       action: require_approval
-      detectors: [korean_rrn, korean_phone, email, jwt, api_key, ssh_private_key]
+      detectors: [korean_rrn, korean_phone, email, korean_bank_account, korean_address, jwt, api_key, ssh_private_key]
   response:
     injection:
       action: block
       patterns: ["ignore previous instructions", "이전 지시를 무시", "전체 메일을 전송", "system prompt", "사용자에게 말하지 말고"]
     pii:
       action: mask
-      detectors: [korean_rrn, korean_phone, email, jwt, api_key, ssh_private_key]
+      detectors: [korean_rrn, korean_phone, email, korean_bank_account, korean_address, jwt, api_key, ssh_private_key]
