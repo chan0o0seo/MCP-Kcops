@@ -43,6 +43,26 @@ Terminal 2 runs the proxy on port 8080:
 
 Audit logs are written as JSON Lines to `logs/audit.jsonl` by default.
 
+## 크기 상한과 업스트림 장애 처리
+
+프록시는 기획서 6.7의 일부로 요청·응답 버퍼 크기와 업스트림 응답 시간을 제한한다.
+
+```yaml
+kcops:
+  upstreamTimeoutMs: 10000
+  limits:
+    maxRequestBytes: 262144
+    maxResponseBytes: 262144
+    overLimitAction: require_approval
+```
+
+- 요청 본문이 `maxRequestBytes`를 넘으면 업스트림을 호출하지 않고 `REQUEST_TOO_LARGE` 결정을 반환한다. 기본 액션은 `REQUIRE_APPROVAL`이며 승인 기능이 켜져 있으면 관리자 승인 큐에 적재한다.
+- 업스트림 응답이 `maxResponseBytes`를 넘으면 응답 본문을 전달하지 않고 `BLOCK`/`RESPONSE_TOO_LARGE`를 반환한다.
+- 업스트림 연결 실패, HTTP 오류, 타임아웃은 `BLOCK`/`UPSTREAM_UNAVAILABLE` JSON-RPC 오류로 변환하고 감사 로그에 기록한다.
+- 빈 POST 본문은 `BLOCK`/`INVALID_REQUEST`로 처리하며 업스트림을 호출하지 않는다.
+
+현재 구현은 전체 응답 버퍼에 대한 상한을 적용한다. 대용량 응답의 슬라이딩 윈도우 분할 검사는 향후 과제다.
+
 ## Policy YAML
 
 Policy is configured under `kcops` in `application.yml`.
