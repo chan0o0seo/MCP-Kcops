@@ -30,7 +30,20 @@ dependencies {
 }
 
 tasks.named('test') {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        excludeTags 'eval'
+    }
+}
+
+tasks.register('eval', Test) {
+    description = 'Runs the offline evaluation dataset and local latency benchmark.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform {
+        includeTags 'eval'
+    }
+    shouldRunAfter tasks.named('test')
 }
 
 tasks.withType(JavaCompile).configureEach {

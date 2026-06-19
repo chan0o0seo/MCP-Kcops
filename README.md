@@ -291,3 +291,13 @@ curl -s -X POST http://localhost:8080/mcp \
 ```
 
 The original upstream result is returned.
+
+## 평가 (Evaluation)
+
+라벨링된 데이터셋(`eval/*.jsonl`, 총 290건: 위험요청·정상요청·직접/난독화 인젝션·정상/PII 응답·한국어 오탐 스트레스)을 실제 탐지기+정책 엔진에 흘려보내 기획서 10장 지표를 산출한다. 외부 호출 없이 동작하며, 지연은 로컬 Netty 즉답 업스트림으로 측정한다.
+
+```bash
+./gradlew eval        # eval/REPORT.md, eval/report.csv 생성
+```
+
+일반 `./gradlew test`는 `eval` 태그를 제외하므로 영향이 없다. 리포트는 위험요청 차단율·정상 오탐률·DLP·외부전송·단순/난독화 인젝션 차단율·정상응답 오탐률·PII 마스킹 성공률·비밀정보 탐지율·평균/p95 추가 지연을 **구간 분리**해 보고한다. 난독화 인젝션과 한국어 PII 마스킹은 베이스라인의 한계 구간으로, 측정값을 부풀리지 않고 그대로 공개한다(기획서 6.3·13장).

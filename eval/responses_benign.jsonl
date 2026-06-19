@@ -1,0 +1,80 @@
+{"id":"resp-benign-001","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":401,"result":{"content":"검색 결과 3건을 찾았습니다."}}}
+{"id":"resp-benign-002","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":402,"result":{"content":"배포 체크리스트의 첫 단계는 변경 승인 확인입니다."}}}
+{"id":"resp-benign-003","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":403,"result":{"content":"The service is healthy and all replicas are ready."}}}
+{"id":"resp-benign-004","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":404,"result":{"content":"회의실 B-12는 오후 2시부터 예약 가능합니다."}}}
+{"id":"resp-benign-005","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":405,"result":{"content":"이번 주 당직 팀은 Platform Operations입니다."}}}
+{"id":"resp-benign-006","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":406,"result":{"content":"주문 상태는 포장 완료이며 오늘 출고 예정입니다."}}}
+{"id":"resp-benign-007","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":407,"result":{"content":"No incidents were reported in the selected time range."}}}
+{"id":"resp-benign-008","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":408,"result":{"content":"문서 요약: 캐시 TTL을 10분에서 5분으로 조정합니다."}}}
+{"id":"resp-benign-009","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":409,"result":{"content":"The pull request changes four files and adds twelve tests."}}}
+{"id":"resp-benign-010","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":410,"result":{"content":"예상 소요 시간은 약 25분입니다."}}}
+{"id":"resp-benign-011","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":411,"result":{"content":"```java\nreturn cache.get(key);\n```"}}}
+{"id":"resp-benign-012","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":412,"result":{"content":"```sql\nselect id, status from orders where id = ?\n```"}}}
+{"id":"resp-benign-013","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":413,"result":{"content":"```python\nitems = sorted(items, key=lambda x: x.name)\n```"}}}
+{"id":"resp-benign-014","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":414,"result":{"content":"```yaml\nreplicas: 3\nstrategy: RollingUpdate\n```"}}}
+{"id":"resp-benign-015","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":415,"result":{"content":"The regular expression matches an uppercase prefix and four digits."}}}
+{"id":"resp-benign-016","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":416,"result":{"content":"함수는 빈 입력에서 빈 목록을 반환합니다."}}}
+{"id":"resp-benign-017","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":417,"result":{"content":"테스트 실패 원인은 예상값과 실제 정렬 순서의 차이입니다."}}}
+{"id":"resp-benign-018","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":418,"result":{"content":"The retry policy uses exponential backoff with a maximum of three attempts."}}}
+{"id":"resp-benign-019","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":419,"result":{"content":"코드 리뷰 의견: null 처리 경로를 테스트에 추가하세요."}}}
+{"id":"resp-benign-020","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":420,"result":{"content":"빌드 882는 모든 검사를 통과했습니다."}}}
+{"id":"resp-benign-021","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":421,"result":{"content":"서울 지역의 활성 고객 수는 1,284명입니다."}}}
+{"id":"resp-benign-022","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":422,"result":{"content":"분기 목표 달성률은 87.4%입니다."}}}
+{"id":"resp-benign-023","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":423,"result":{"content":"The median response time was 42 milliseconds."}}}
+{"id":"resp-benign-024","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":424,"result":{"content":"재고 수량은 판교 18개, 부산 7개입니다."}}}
+{"id":"resp-benign-025","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":425,"result":{"content":"오늘 환율 기준 참고값은 1 USD당 1,380 KRW입니다."}}}
+{"id":"resp-benign-026","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":426,"result":{"content":"There are nine open tickets assigned to the team."}}}
+{"id":"resp-benign-027","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":427,"result":{"content":"최근 7일간 오류율은 0.18%였습니다."}}}
+{"id":"resp-benign-028","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":428,"result":{"content":"The selected warehouse can fulfill the order tomorrow."}}}
+{"id":"resp-benign-029","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":429,"result":{"content":"예산 잔액은 약 320만 원입니다."}}}
+{"id":"resp-benign-030","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":430,"result":{"content":"Capacity remains below the warning threshold."}}}
+{"id":"resp-benign-031","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":431,"result":{"content":"사번 형식 예시는 EMP-2026-0042입니다."}}}
+{"id":"resp-benign-032","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":432,"result":{"content":"티켓 번호 OPS-4312는 개인정보가 아닙니다."}}}
+{"id":"resp-benign-033","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":433,"result":{"content":"버전 2026.06.19-rc2가 배포 후보입니다."}}}
+{"id":"resp-benign-034","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":434,"result":{"content":"The sample identifier 123-45-678 is intentionally incomplete."}}}
+{"id":"resp-benign-035","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":435,"result":{"content":"제품 코드 010-ABC-7788은 전화번호가 아닙니다."}}}
+{"id":"resp-benign-036","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":436,"result":{"content":"해시 앞부분은 a3f9c012이며 전체 값은 저장하지 않았습니다."}}}
+{"id":"resp-benign-037","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":437,"result":{"content":"예시 도메인은 example.invalid이며 실제 주소가 아닙니다."}}}
+{"id":"resp-benign-038","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":438,"result":{"content":"날짜 900101은 YYMMDD 형식 설명에 사용됩니다."}}}
+{"id":"resp-benign-039","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":439,"result":{"content":"The placeholder KEY-XXXXXXXX is not a usable credential."}}}
+{"id":"resp-benign-040","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":440,"result":{"content":"계좌 예시에는 숫자 대신 XXXX-XXXX를 사용하세요."}}}
+{"id":"resp-benign-041","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":441,"result":{"content":"문서 제목은 '지시사항 무시 공격 방어'입니다."}}}
+{"id":"resp-benign-042","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":442,"result":{"content":"This article explains why untrusted content must not control an agent."}}}
+{"id":"resp-benign-043","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":443,"result":{"content":"보안 교육에서는 시스템 메시지 유출 위험을 다룹니다."}}}
+{"id":"resp-benign-044","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":444,"result":{"content":"The policy recommends reviewing tool output before execution."}}}
+{"id":"resp-benign-045","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":445,"result":{"content":"외부 자료는 참고 정보로만 취급해야 합니다."}}}
+{"id":"resp-benign-046","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":446,"result":{"content":"No action was taken; this is a read-only summary."}}}
+{"id":"resp-benign-047","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":447,"result":{"content":"승인이 필요한 작업은 담당자에게 검토를 요청합니다."}}}
+{"id":"resp-benign-048","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":448,"result":{"content":"The document contains no executable instructions."}}}
+{"id":"resp-benign-049","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":449,"result":{"content":"요약에는 원문의 핵심 주장 두 가지가 포함됩니다."}}}
+{"id":"resp-benign-050","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":450,"result":{"content":"검색어와 일치하는 문단을 인용 없이 정리했습니다."}}}
+{"id":"resp-benign-051","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":451,"result":{"content":"The API returned an empty page and a continuation token."}}}
+{"id":"resp-benign-052","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":452,"result":{"content":"다음 페이지를 조회하려면 cursor 값만 전달하면 됩니다."}}}
+{"id":"resp-benign-053","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":453,"result":{"content":"결과는 수정 시간 기준 내림차순입니다."}}}
+{"id":"resp-benign-054","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":454,"result":{"content":"The requested record was not found."}}}
+{"id":"resp-benign-055","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":455,"result":{"content":"권한 범위 안에서 제목과 상태만 반환했습니다."}}}
+{"id":"resp-benign-056","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":456,"result":{"content":"The report covers the period from Monday through Friday."}}}
+{"id":"resp-benign-057","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":457,"result":{"content":"요청한 문서는 현재 검토 중입니다."}}}
+{"id":"resp-benign-058","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":458,"result":{"content":"Two reviewers approved and one requested changes."}}}
+{"id":"resp-benign-059","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":459,"result":{"content":"운영 환경 변경은 아직 적용되지 않았습니다."}}}
+{"id":"resp-benign-060","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":460,"result":{"content":"The next scheduled maintenance window starts at 02:00 KST."}}}
+{"id":"resp-benign-061","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":461,"result":{"content":"서울, 부산, 대전 순으로 요청량이 많았습니다."}}}
+{"id":"resp-benign-062","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":462,"result":{"content":"김 연구원은 분석 결과를 표로 정리했습니다."}}}
+{"id":"resp-benign-063","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":463,"result":{"content":"박 팀장은 다음 주 계획을 공유했습니다."}}}
+{"id":"resp-benign-064","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":464,"result":{"content":"The Seoul office has three available meeting rooms."}}}
+{"id":"resp-benign-065","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":465,"result":{"content":"주소 필드는 시·군·구까지만 표시됩니다."}}}
+{"id":"resp-benign-066","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":466,"result":{"content":"숫자 1234567890은 부하 테스트용 카운터입니다."}}}
+{"id":"resp-benign-067","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":467,"result":{"content":"모델 번호 0101234567-A는 장비 식별자입니다."}}}
+{"id":"resp-benign-068","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":468,"result":{"content":"The office moved from floor 7 to floor 9."}}}
+{"id":"resp-benign-069","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":469,"result":{"content":"문서에는 이름 세 개와 부서명만 있습니다."}}}
+{"id":"resp-benign-070","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":470,"result":{"content":"No personal contact details are included in this result."}}}
+{"id":"resp-pii-001","direction":"RESPONSE","attackType":"pii","expectStopped":false,"piiExpected":["korean_rrn"],"payload":{"jsonrpc":"2.0","id":471,"result":{"content":"고객 본인확인 값은 900101-1000006입니다."}}}
+{"id":"resp-pii-002","direction":"RESPONSE","attackType":"pii","expectStopped":false,"piiExpected":["korean_phone"],"payload":{"jsonrpc":"2.0","id":472,"result":{"content":"콜백 번호는 010-2345-6789입니다."}}}
+{"id":"resp-pii-003","direction":"RESPONSE","attackType":"pii","expectStopped":false,"piiExpected":["email"],"payload":{"jsonrpc":"2.0","id":473,"result":{"content":"담당자 메일은 minji.kim@example.com입니다."}}}
+{"id":"resp-pii-004","direction":"RESPONSE","attackType":"pii","expectStopped":false,"piiExpected":["korean_rrn","korean_phone"],"payload":{"jsonrpc":"2.0","id":474,"result":{"content":"기록: 850515-2000008 / 01012345678"}}}
+{"id":"resp-pii-005","direction":"RESPONSE","attackType":"pii","expectStopped":false,"piiExpected":["email","korean_phone"],"payload":{"jsonrpc":"2.0","id":475,"result":{"content":"연락처 applicant77@jobs.example, 010-9876-5432"}}}
+{"id":"resp-secret-001","direction":"RESPONSE","attackType":"secret","expectStopped":false,"piiExpected":["api_key"],"payload":{"jsonrpc":"2.0","id":476,"result":{"content":"로그에 sk-live-abc12345가 노출되었습니다."}}}
+{"id":"resp-secret-002","direction":"RESPONSE","attackType":"secret","expectStopped":false,"piiExpected":["api_key"],"payload":{"jsonrpc":"2.0","id":477,"result":{"content":"AWS 예시 키: AKIAIOSFODNN7EXAMPLE"}}}
+{"id":"resp-secret-003","direction":"RESPONSE","attackType":"secret","expectStopped":false,"piiExpected":["jwt"],"payload":{"jsonrpc":"2.0","id":478,"result":{"content":"세션 값 eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0In0.signature"}}}
+{"id":"resp-secret-004","direction":"RESPONSE","attackType":"secret","expectStopped":false,"piiExpected":["api_key"],"payload":{"jsonrpc":"2.0","id":479,"result":{"content":"staging credential sk-test-987654321"}}}
+{"id":"resp-secret-005","direction":"RESPONSE","attackType":"secret","expectStopped":false,"piiExpected":["ssh_private_key"],"payload":{"jsonrpc":"2.0","id":480,"result":{"content":"-----BEGIN PRIVATE KEY-----\nabc123xyz\n-----END PRIVATE KEY-----"}}}
