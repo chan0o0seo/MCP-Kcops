@@ -8,5 +8,6 @@ public enum PolicyCategory {
     PII,
     SECRET,
     INJECTION,
+    TOOL_METADATA,
     FINGERPRINT
 }

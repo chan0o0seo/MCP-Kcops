@@ -1,6 +1,7 @@
 package com.kcops.mcp.detector;
 
 import com.kcops.mcp.config.KcopsProperties;
+import com.kcops.mcp.detector.dlp.JsonTextExtractor;
 import com.kcops.mcp.model.McpRequest;
 import java.util.List;
 import java.util.Locale;
@@ -23,7 +24,7 @@ public class ExcessiveScopeRequestDetector implements RequestDetector {
     @Override
     public List<Finding> inspect(McpRequest req) {
         String body = req.rawBody() == null ? "" : req.rawBody();
-        String lowered = body.toLowerCase(Locale.ROOT);
+        String lowered = (body + "\n" + JsonTextExtractor.extract(req.raw())).toLowerCase(Locale.ROOT);
         boolean excessive = properties.getRequest().getScope().getPatterns().stream()
                 .filter(pattern -> pattern != null && !pattern.isBlank())
                 .map(pattern -> pattern.toLowerCase(Locale.ROOT))

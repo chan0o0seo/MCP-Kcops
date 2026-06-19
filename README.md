@@ -4,6 +4,24 @@ Spring Boot WebFlux based MCP Runtime Firewall walking skeleton. It does not cal
 
 감사·지문·앵커의 블로킹 파일 IO는 `boundedElastic`로 오프로드되어 Netty 이벤트 루프를 막지 않는다.
 
+## 탐지 건전성과 자원 상한
+
+- 탐지는 원시 JSON과 Jackson이 디코딩한 문자열 값을 함께 검사해 `\uXXXX` 같은 JSON 인코딩 우회를 완화한다. 평문 PII/secret은 원시 본문의 절대 오프셋으로 기존과 동일하게 마스킹하며, 디코딩 값에서만 발견되어 안전한 마스킹 스팬이 없는 응답은 원문을 전달하지 않고 차단한다.
+- 요청·응답 detector가 예외를 던지면 해당 방향을 `BLOCK`/`DETECTOR_ERROR`로 강제하고 감사 로그를 남기는 fail-closed 방식으로 처리한다.
+- 승인 저장소는 `kcops.approval.maxPending`(기본값 `1000`)으로 크기를 제한한다. 초과 시 오래된 승인·거절 항목을 먼저 제거하고, 부족하면 오래된 대기 항목을 제거한다.
+
+## R1 — 도구 메타데이터 인젝션 검사
+
+`tools/list` 응답의 도구 이름, 설명, 입력 스키마 문자열을 로컬 인젝션 패턴으로 검사한다. 최초 관찰이라 지문 변경이 없는 도구도 악성 메타데이터가 발견되면 `REQUIRE_APPROVAL`/`TOOL_METADATA_INJECTION_SUSPECTED`로 처리한다. 지문 변경과 동시에 탐지되면 기존 `TOOL_DESCRIPTION_FINGERPRINT_CHANGED`가 대표 reason으로 유지된다.
+
+## R2 — 간접 피드백 모드
+
+기본값 `kcops.discloseDetectors: true`에서는 기존처럼 실제 reason과 detector 목록을 반환한다. 운영에서 `false`로 설정하면 외부 응답 reason은 `POLICY_VIOLATION`, detectors는 빈 배열로 일반화하지만 `logs/audit.jsonl`에는 실제 reason과 detector 목록을 그대로 기록한다.
+
+## R4 — JSON 재귀 깊이 상한
+
+JSON 문자열 추출은 최대 깊이 200까지만 순회한다. 이보다 깊은 하위 노드는 조용히 건너뛰어 과도한 중첩 입력에 의한 스택 고갈을 방지하며 일반적인 얕은 페이로드의 추출 동작은 유지한다.
+
 ## 감사 무결성
 
 감사 무결성의 보장 범위는 다음과 같다.
@@ -95,6 +113,10 @@ kcops:
   upstreamUrl: http://localhost:8090/mcp
   auditLogPath: logs/audit.jsonl
   auditAnchorPath: logs/audit-anchor.jsonl
+  discloseDetectors: true
+  approval:
+    enabled: true
+    maxPending: 1000
   request:
     toolCall:
       action: require_approval
@@ -113,6 +135,8 @@ kcops:
       action: require_approval
       detectors: [korean_rrn, korean_phone, email, jwt, api_key, ssh_private_key]
   response:
+    toolMetadata:
+      action: require_approval
     injection:
       action: block
       decodeBase64: true

@@ -30,6 +30,15 @@ class McpProxyIntegrationTest {
                         upstreamCalls.incrementAndGet();
                         boolean injection = body.contains("\"trigger\":\"injection\"") || body.contains("\"name\":\"search_mail\"");
                         boolean pii = body.contains("\"trigger\":\"pii\"");
+                        boolean encodedPii = body.contains("\"trigger\":\"encoded_pii\"");
+                        if (encodedPii) {
+                            String encoded = unicodeEscape("010-1234-5678");
+                            String json = "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":\""
+                                    + encoded + "\"}}";
+                            return response.header("Content-Type", "application/json;charset=UTF-8")
+                                    .sendByteArray(Mono.just(json.getBytes(StandardCharsets.UTF_8)))
+                                    .then();
+                        }
                         String text = pii
                                 ? "홍길동 / 010-1234-5678 / 900101-1234568 / hong@example.com / 서울특별시 강남구 테헤란로 123"
                                 : injection
@@ -106,6 +115,28 @@ class McpProxyIntegrationTest {
                 .jsonPath("$.reason").isEqualTo("DESTRUCTIVE_OR_CODE_EXECUTION_REQUEST");
 
         assertThat(upstreamCalls).hasValue(0);
+    }
+
+    @Test
+    void requiresApprovalForUnicodeEscapedDestructiveRequestAndAudits() throws Exception {
+        upstreamCalls.set(0);
+        String escapedCommand = unicodeEscape("rm -rf /workspace/tmp/*");
+        String request = "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\","
+                + "\"params\":{\"name\":\"execute_shell\",\"arguments\":{\"command\":\""
+                + escapedCommand + "\"}}}";
+
+        webTestClient.post().uri("/mcp")
+                .bodyValue(request)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.decision").isEqualTo("REQUIRE_APPROVAL")
+                .jsonPath("$.reason").isEqualTo("DESTRUCTIVE_OR_CODE_EXECUTION_REQUEST");
+
+        assertThat(upstreamCalls).hasValue(0);
+        assertThat(Files.readString(tempDir.resolve("audit.jsonl"), StandardCharsets.UTF_8))
+                .contains("DestructiveCommandRequestDetector")
+                .contains("DESTRUCTIVE_OR_CODE_EXECUTION_REQUEST");
     }
 
     @Test
@@ -191,5 +222,35 @@ class McpProxyIntegrationTest {
                 .contains("korean_rrn")
                 .contains("email")
                 .contains("korean_address");
+    }
+
+    @Test
+    void blocksEncodedPiiResponseWhenMaskSpansCannotTargetRawBody() throws Exception {
+        upstreamCalls.set(0);
+        String request = """
+                {"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"calendar_lookup","arguments":{"trigger":"encoded_pii"}}}
+                """;
+
+        webTestClient.post().uri("/mcp")
+                .bodyValue(request)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(String.class)
+                .value(body -> assertThat(body)
+                        .contains("\"decision\":\"BLOCK\"")
+                        .contains("\"reason\":\"PII_DETECTED\"")
+                        .doesNotContain("010-1234-5678"));
+
+        assertThat(upstreamCalls).hasValue(1);
+        assertThat(Files.readString(tempDir.resolve("audit.jsonl"), StandardCharsets.UTF_8))
+                .contains("\"decision\":\"BLOCK\"")
+                .contains("\"reason\":\"PII_DETECTED\"")
+                .contains("korean_phone");
+    }
+
+    private static String unicodeEscape(String value) {
+        StringBuilder escaped = new StringBuilder();
+        value.codePoints().forEach(codePoint -> escaped.append(String.format("\\u%04x", codePoint)));
+        return escaped.toString();
     }
 }

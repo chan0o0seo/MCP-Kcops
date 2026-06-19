@@ -48,13 +48,14 @@ public class PolicyEngine {
             case SCOPE -> properties.getRequest().getScope().getAction();
             case TOOL_CALL -> properties.getRequest().getToolCall().getAction();
             case PII, SECRET -> properties.getRequest().getPii().getAction();
-            case INJECTION, FINGERPRINT -> Action.ALLOW;
+            case INJECTION, TOOL_METADATA, FINGERPRINT -> Action.ALLOW;
         };
     }
 
     private Action responseAction(PolicyCategory category) {
         return switch (category) {
             case INJECTION -> properties.getResponse().getInjection().getAction();
+            case TOOL_METADATA -> properties.getResponse().getToolMetadata().getAction();
             case FINGERPRINT -> properties.getResponse().getFingerprint().getAction();
             case PII, SECRET -> properties.getResponse().getPii().getAction();
             case TOOL_CALL, EGRESS, DESTRUCTIVE, SCOPE -> Action.ALLOW;
@@ -84,7 +85,7 @@ public class PolicyEngine {
             case EGRESS, FINGERPRINT -> 4;
             case SCOPE -> 3;
             case TOOL_CALL -> 2;
-            case SECRET -> 1;
+            case SECRET, TOOL_METADATA -> 1;
             case PII, INJECTION -> 0;
         };
     }

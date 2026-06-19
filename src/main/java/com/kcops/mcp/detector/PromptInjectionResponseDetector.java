@@ -1,6 +1,7 @@
 package com.kcops.mcp.detector;
 
 import com.kcops.mcp.config.KcopsProperties;
+import com.kcops.mcp.detector.dlp.JsonTextExtractor;
 import com.kcops.mcp.model.McpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -35,7 +36,8 @@ public class PromptInjectionResponseDetector implements ResponseDetector {
         if (resp.result() != null && resp.result().path("tools").isArray()) {
             return List.of();
         }
-        String text = resp.rawBody() == null ? "" : resp.rawBody();
+        String text = (resp.rawBody() == null ? "" : resp.rawBody())
+                + "\n" + JsonTextExtractor.extract(resp.raw());
         KcopsProperties.Injection injection = properties.getResponse().getInjection();
         String lowered = inspectionText(text, injection.isDecodeBase64()).toLowerCase(Locale.ROOT);
         Map<String, List<String>> types = injection.getTypes();

@@ -15,6 +15,7 @@ public class KcopsProperties {
     private String auditLogPath = "logs/audit.jsonl";
     private String auditAnchorPath = "logs/audit-anchor.jsonl";
     private String fingerprintStorePath = "logs/fingerprints.json";
+    private boolean discloseDetectors = true;
     private long upstreamTimeoutMs = 10000;
     private Limits limits = new Limits();
     private Admin admin = new Admin();
@@ -65,6 +66,14 @@ public class KcopsProperties {
 
     public void setFingerprintStorePath(String fingerprintStorePath) {
         this.fingerprintStorePath = fingerprintStorePath;
+    }
+
+    public boolean isDiscloseDetectors() {
+        return discloseDetectors;
+    }
+
+    public void setDiscloseDetectors(boolean discloseDetectors) {
+        this.discloseDetectors = discloseDetectors;
     }
 
     public long getUpstreamTimeoutMs() {
@@ -159,6 +168,7 @@ public class KcopsProperties {
 
     public static class Approval {
         private boolean enabled = true;
+        private int maxPending = 1000;
 
         public boolean isEnabled() {
             return enabled;
@@ -166,6 +176,14 @@ public class KcopsProperties {
 
         public void setEnabled(boolean enabled) {
             this.enabled = enabled;
+        }
+
+        public int getMaxPending() {
+            return maxPending;
+        }
+
+        public void setMaxPending(int maxPending) {
+            this.maxPending = maxPending;
         }
     }
 
@@ -220,6 +238,7 @@ public class KcopsProperties {
     public static class Response {
         private Injection injection = new Injection();
         private Pii pii = new Pii(Action.MASK);
+        private ToolMetadata toolMetadata = new ToolMetadata();
         private Fingerprint fingerprint = new Fingerprint();
 
         public Injection getInjection() {
@@ -236,6 +255,14 @@ public class KcopsProperties {
 
         public void setPii(Pii pii) {
             this.pii = pii;
+        }
+
+        public ToolMetadata getToolMetadata() {
+            return toolMetadata;
+        }
+
+        public void setToolMetadata(ToolMetadata toolMetadata) {
+            this.toolMetadata = toolMetadata;
         }
 
         public Fingerprint getFingerprint() {
@@ -409,6 +436,18 @@ public class KcopsProperties {
     }
 
     public static class Fingerprint {
+        private Action action = Action.REQUIRE_APPROVAL;
+
+        public Action getAction() {
+            return action;
+        }
+
+        public void setAction(Action action) {
+            this.action = action;
+        }
+    }
+
+    public static class ToolMetadata {
         private Action action = Action.REQUIRE_APPROVAL;
 
         public Action getAction() {

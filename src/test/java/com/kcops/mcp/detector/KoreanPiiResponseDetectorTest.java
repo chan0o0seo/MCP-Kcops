@@ -46,4 +46,39 @@ class KoreanPiiResponseDetectorTest {
 
         assertThat(new KoreanPiiResponseDetector().inspect(response)).isEmpty();
     }
+
+    @Test
+    void plaintextPiiProducesOnlyFindingsWithMaskSpans() throws Exception {
+        String body = """
+                {"jsonrpc":"2.0","id":1,"result":{"content":"010-1234-5678 / hong@example.com"}}
+                """;
+
+        List<Finding> findings = new KoreanPiiResponseDetector()
+                .inspect(McpResponse.from(objectMapper.readTree(body), body));
+
+        assertThat(findings).extracting(Finding::detector)
+                .containsExactly("korean_phone", "email");
+        assertThat(findings).allMatch(finding -> !finding.spans().isEmpty());
+    }
+
+    @Test
+    void encodedPiiProducesPresenceFindingWithoutRawBodySpan() throws Exception {
+        String escapedPhone = unicodeEscape("010-1234-5678");
+        String body = "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":\"" + escapedPhone + "\"}}";
+
+        assertThat(new KoreanPiiResponseDetector()
+                .inspect(McpResponse.from(objectMapper.readTree(body), body)))
+                .singleElement()
+                .satisfies(finding -> {
+                    assertThat(finding.detector()).isEqualTo("korean_phone");
+                    assertThat(finding.reason()).isEqualTo("PII_DETECTED");
+                    assertThat(finding.spans()).isEmpty();
+                });
+    }
+
+    private String unicodeEscape(String value) {
+        StringBuilder escaped = new StringBuilder();
+        value.codePoints().forEach(codePoint -> escaped.append(String.format("\\u%04x", codePoint)));
+        return escaped.toString();
+    }
 }

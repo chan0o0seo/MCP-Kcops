@@ -41,4 +41,15 @@ class DestructiveCommandRequestDetectorTest {
 
         assertThat(detector.inspect(McpRequest.from(objectMapper.readTree(body), body))).isEmpty();
     }
+
+    @Test
+    void detectsUnicodeEscapedDestructivePatternFromDecodedJsonValue() throws Exception {
+        KcopsProperties properties = new KcopsProperties();
+        properties.getRequest().getDestructive().setPatterns(List.of("rm -rf"));
+        DestructiveCommandRequestDetector detector = new DestructiveCommandRequestDetector(properties);
+        String body = "{\"jsonrpc\":\"2.0\",\"id\":1,\"params\":{\"name\":\"execute_shell\","
+                + "\"arguments\":{\"command\":\"r" + "\\" + "u006d -rf /tmp\"}}}";
+
+        assertThat(detector.inspect(McpRequest.from(objectMapper.readTree(body), body))).singleElement();
+    }
 }
