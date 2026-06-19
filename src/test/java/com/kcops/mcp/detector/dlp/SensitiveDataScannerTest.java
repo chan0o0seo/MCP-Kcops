@@ -23,6 +23,21 @@ class SensitiveDataScannerTest {
     }
 
     @Test
+    void detectsKoreanRrnAdjacentToKoreanTextWithOffsets() {
+        String trailingText = "900101-1000006입니다";
+        String leadingText = "주민번호900101-1000006";
+
+        assertThat(SensitiveDataScanner.scan(trailingText))
+                .filteredOn(match -> match.detectorName().equals("korean_rrn"))
+                .extracting(match -> trailingText.substring(match.start(), match.end()))
+                .containsExactly("900101", "1000006");
+        assertThat(SensitiveDataScanner.scan(leadingText))
+                .filteredOn(match -> match.detectorName().equals("korean_rrn"))
+                .extracting(match -> leadingText.substring(match.start(), match.end()))
+                .containsExactly("900101", "1000006");
+    }
+
+    @Test
     void detectsKoreanPhoneMiddleGroup() {
         String text = "연락처 010-1234-5678";
 
@@ -39,6 +54,23 @@ class SensitiveDataScannerTest {
     }
 
     @Test
+    void detectsKoreanPhoneAdjacentToKoreanTextWithMaskSpan() {
+        String trailingText = "010-2345-6789입니다";
+        String leadingText = "연락처010-2345-6789";
+
+        assertThat(SensitiveDataScanner.scan(trailingText))
+                .filteredOn(match -> match.detectorName().equals("korean_phone"))
+                .singleElement()
+                .satisfies(match -> assertThat(trailingText.substring(match.start(), match.end()))
+                        .isEqualTo("2345"));
+        assertThat(SensitiveDataScanner.scan(leadingText))
+                .filteredOn(match -> match.detectorName().equals("korean_phone"))
+                .singleElement()
+                .satisfies(match -> assertThat(leadingText.substring(match.start(), match.end()))
+                        .isEqualTo("2345"));
+    }
+
+    @Test
     void detectsEmailLocalPartMaskSpan() {
         String text = "mail hong@example.com";
 
@@ -52,6 +84,23 @@ class SensitiveDataScannerTest {
     }
 
     @Test
+    void detectsEmailAdjacentToKoreanTextWithMaskSpan() {
+        String trailingText = "minji.kim@example.com입니다";
+        String leadingText = "메일minji.kim@example.com";
+
+        assertThat(SensitiveDataScanner.scan(trailingText))
+                .filteredOn(match -> match.detectorName().equals("email"))
+                .singleElement()
+                .satisfies(match -> assertThat(trailingText.substring(match.start(), match.end()))
+                        .isEqualTo("inji.kim"));
+        assertThat(SensitiveDataScanner.scan(leadingText))
+                .filteredOn(match -> match.detectorName().equals("email"))
+                .singleElement()
+                .satisfies(match -> assertThat(leadingText.substring(match.start(), match.end()))
+                        .isEqualTo("inji.kim"));
+    }
+
+    @Test
     void detectsBankAccountOnlyWithContext() {
         assertThat(SensitiveDataScanner.scan("입금 계좌 123-456-789012"))
                 .extracting(SensitiveMatch::detectorName)
@@ -59,6 +108,16 @@ class SensitiveDataScannerTest {
         assertThat(SensitiveDataScanner.scan("주문번호 123456789012 입니다"))
                 .extracting(SensitiveMatch::detectorName)
                 .doesNotContain("korean_bank_account");
+    }
+
+    @Test
+    void detectsBankAccountAdjacentToKoreanTextWhenContextIsPresent() {
+        String text = "계좌123-456-789012입니다";
+
+        assertThat(SensitiveDataScanner.scan(text))
+                .filteredOn(match -> match.detectorName().equals("korean_bank_account"))
+                .extracting(match -> text.substring(match.start(), match.end()))
+                .containsExactly("123", "456", "789012");
     }
 
     @Test
@@ -107,6 +166,45 @@ class SensitiveDataScannerTest {
         assertThat(SensitiveDataScanner.scan("-----BEGIN PRIVATE KEY----- incomplete"))
                 .extracting(SensitiveMatch::detectorName)
                 .doesNotContain("ssh_private_key");
+    }
+
+    @Test
+    void detectsSecretsAdjacentToKoreanTextWithMaskSpans() {
+        String apiKeyText = "키sk-live-abc12345가";
+        String jwtText = "토큰eyJheader.eyJpayload.signature를";
+
+        assertThat(SensitiveDataScanner.scan(apiKeyText))
+                .filteredOn(match -> match.detectorName().equals("api_key"))
+                .singleElement()
+                .satisfies(match -> assertThat(apiKeyText.substring(match.start(), match.end()))
+                        .isEqualTo("ive-abc12345"));
+        assertThat(SensitiveDataScanner.scan(jwtText))
+                .filteredOn(match -> match.detectorName().equals("jwt"))
+                .singleElement()
+                .satisfies(match -> assertThat(jwtText.substring(match.start(), match.end()))
+                        .isEqualTo("eyJheader.eyJpayload.signature"));
+    }
+
+    @Test
+    void doesNotMatchSensitiveTokensInsideLongerAsciiRuns() {
+        assertThat(SensitiveDataScanner.scan("12900101-10000061"))
+                .extracting(SensitiveMatch::detectorName)
+                .doesNotContain("korean_rrn");
+        assertThat(SensitiveDataScanner.scan("9010-2345-67890"))
+                .extracting(SensitiveMatch::detectorName)
+                .doesNotContain("korean_phone");
+        assertThat(SensitiveDataScanner.scan("계좌 1123-456-7890123"))
+                .extracting(SensitiveMatch::detectorName)
+                .doesNotContain("korean_bank_account");
+        assertThat(SensitiveDataScanner.scan("prefixsk-live-abc12345suffix"))
+                .extracting(SensitiveMatch::detectorName)
+                .doesNotContain("api_key");
+        assertThat(SensitiveDataScanner.scan("prefixeyJheader.eyJpayload.signaturesuffix"))
+                .extracting(SensitiveMatch::detectorName)
+                .doesNotContain("jwt");
+        assertThat(SensitiveDataScanner.scan("minji.kim@example.com1"))
+                .extracting(SensitiveMatch::detectorName)
+                .doesNotContain("email");
     }
 
     @Test
