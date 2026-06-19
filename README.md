@@ -9,6 +9,8 @@ Spring Boot WebFlux based MCP Runtime Firewall walking skeleton. It does not cal
 - 탐지는 원시 JSON과 Jackson이 디코딩한 문자열 값을 함께 검사해 `\uXXXX` 같은 JSON 인코딩 우회를 완화한다. 평문 PII/secret은 원시 본문의 절대 오프셋으로 기존과 동일하게 마스킹하며, 디코딩 값에서만 발견되어 안전한 마스킹 스팬이 없는 응답은 원문을 전달하지 않고 차단한다.
 - 요청·응답 detector가 예외를 던지면 해당 방향을 `BLOCK`/`DETECTOR_ERROR`로 강제하고 감사 로그를 남기는 fail-closed 방식으로 처리한다.
 - 승인 저장소는 `kcops.approval.maxPending`(기본값 `1000`)으로 크기를 제한한다. 초과 시 오래된 승인·거절 항목을 먼저 제거하고, 부족하면 오래된 대기 항목을 제거한다.
+- 응답 검사 상한과 차단 임계치를 분리한다. `kcops.limits.maxResponseBytes`를 넘되 `kcops.limits.maxResponseScanBytes`(기본값 `1048576`) 이내인 대용량 응답도 전체 본문을 그대로 검사해 평문과 동일하게 판정하며(정상 응답은 통과, 인젝션은 차단), 검사 상한을 넘는 응답만 `RESPONSE_TOO_LARGE`로 차단한다.
+- 대기 승인은 `kcops.approval.ttlSeconds`(기본값 `300`) 경과 시 만료되어 목록·승인 대상에서 제거된다(`0` 이하면 만료 비활성). `kcops.approval.requireReason`(기본값 `true`)이면 승인·거절 시 `{"reason":"..."}` 본문으로 사유를 제출해야 하며, 사유가 없으면 거부된다(사유는 감사 로그에 기록).
 
 ## 승인 후 실제 실행 (재제출 토큰)
 

@@ -68,10 +68,14 @@ public class McpProxyHandler {
         this.policyEngine = policyEngine;
         this.auditLogger = auditLogger;
         this.pendingApprovalStore = pendingApprovalStore;
+        int maxResponseScanBytes = Math.max(
+                properties.getLimits().getMaxResponseBytes(),
+                properties.getLimits().getMaxResponseScanBytes()
+        );
         this.webClient = webClientBuilder
                 .exchangeStrategies(ExchangeStrategies.builder()
                         .codecs(codecs -> codecs.defaultCodecs()
-                                .maxInMemorySize(properties.getLimits().getMaxResponseBytes()))
+                                .maxInMemorySize(maxResponseScanBytes))
                         .build())
                 .build();
     }

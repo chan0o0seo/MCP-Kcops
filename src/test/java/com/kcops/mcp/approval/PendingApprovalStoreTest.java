@@ -5,6 +5,10 @@ import com.kcops.mcp.config.KcopsProperties;
 import com.kcops.mcp.detector.PolicyCategory;
 import com.kcops.mcp.policy.Action;
 import com.kcops.mcp.policy.PolicyDecision;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
@@ -153,6 +157,37 @@ class PendingApprovalStoreTest {
                 .count()).isEqualTo(2);
     }
 
+    @Test
+    void expiresPendingAfterTtlButKeepsApproved() {
+        TestClock clock = new TestClock(Instant.parse("2026-06-19T00:00:00Z"));
+        PendingApprovalStore ttlStore = storeWithTtl(60, clock);
+        ttlStore.add("pending", AuditDirection.AGENT_TO_MCP_SERVER, "tool", decision());
+        ttlStore.add("approved", AuditDirection.AGENT_TO_MCP_SERVER, "tool", decision());
+        ttlStore.approve("approved");
+
+        clock.advance(Duration.ofSeconds(61));
+
+        assertThat(ttlStore.pending()).isEmpty();
+        assertThat(ttlStore.find("pending")).isEmpty();
+        assertThat(ttlStore.find("approved"))
+                .get()
+                .extracting(PendingApproval::status)
+                .isEqualTo(ApprovalStatus.APPROVED);
+    }
+
+    @Test
+    void nonPositiveTtlDoesNotExpirePending() {
+        TestClock clock = new TestClock(Instant.parse("2026-06-19T00:00:00Z"));
+        PendingApprovalStore ttlStore = storeWithTtl(0, clock);
+        ttlStore.add("pending", AuditDirection.AGENT_TO_MCP_SERVER, "tool", decision());
+
+        clock.advance(Duration.ofDays(365));
+
+        assertThat(ttlStore.pending()).extracting(PendingApproval::traceId)
+                .containsExactly("pending");
+        assertThat(ttlStore.find("pending")).isPresent();
+    }
+
     private PolicyDecision decision() {
         return new PolicyDecision(
                 Action.REQUIRE_APPROVAL,
@@ -166,5 +201,38 @@ class PendingApprovalStoreTest {
         KcopsProperties properties = new KcopsProperties();
         properties.getApproval().setMaxPending(maxPending);
         return new PendingApprovalStore(properties);
+    }
+
+    private PendingApprovalStore storeWithTtl(int ttlSeconds, Clock clock) {
+        KcopsProperties properties = new KcopsProperties();
+        properties.getApproval().setTtlSeconds(ttlSeconds);
+        return new PendingApprovalStore(properties, clock);
+    }
+
+    private static final class TestClock extends Clock {
+        private Instant instant;
+
+        private TestClock(Instant instant) {
+            this.instant = instant;
+        }
+
+        private void advance(Duration duration) {
+            instant = instant.plus(duration);
+        }
+
+        @Override
+        public ZoneId getZone() {
+            return ZoneId.of("Asia/Seoul");
+        }
+
+        @Override
+        public Clock withZone(ZoneId zone) {
+            return Clock.fixed(instant, zone);
+        }
+
+        @Override
+        public Instant instant() {
+            return instant;
+        }
     }
 }

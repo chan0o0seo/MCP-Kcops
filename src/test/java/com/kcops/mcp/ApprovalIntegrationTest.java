@@ -76,6 +76,16 @@ class ApprovalIntegrationTest {
         webTestClient.post().uri("/admin/approvals/{traceId}/approve", approvedTraceId)
                 .header("Authorization", "Bearer test-admin-token")
                 .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.error").isEqualTo("reason_required");
+        assertThat(pendingApprovals()).hasSize(1);
+
+        webTestClient.post().uri("/admin/approvals/{traceId}/approve", approvedTraceId)
+                .header("Authorization", "Bearer test-admin-token")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .bodyValue("{\"reason\":\"reviewed safe operation\"}")
+                .exchange()
                 .expectStatus().isOk()
                 .expectBody(JsonNode.class)
                 .value(approval -> {
@@ -93,6 +103,15 @@ class ApprovalIntegrationTest {
         webTestClient.post().uri("/admin/approvals/{traceId}/deny", deniedTraceId)
                 .header("Authorization", "Bearer test-admin-token")
                 .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.error").isEqualTo("reason_required");
+
+        webTestClient.post().uri("/admin/approvals/{traceId}/deny", deniedTraceId)
+                .header("Authorization", "Bearer test-admin-token")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .bodyValue("{\"reason\":\"risk not accepted\"}")
+                .exchange()
                 .expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.status").isEqualTo("DENIED")
@@ -100,15 +119,17 @@ class ApprovalIntegrationTest {
 
         webTestClient.post().uri("/admin/approvals/{traceId}/approve", "missing-trace-id")
                 .header("Authorization", "Bearer test-admin-token")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .bodyValue("{\"reason\":\"lookup test\"}")
                 .exchange()
                 .expectStatus().isNotFound();
 
         assertThat(upstreamCalls).hasValue(0);
         String audit = Files.readString(tempDir.resolve("audit.jsonl"), StandardCharsets.UTF_8);
         assertThat(audit)
-                .contains("\"reason\":\"APPROVAL_GRANTED\"")
+                .contains("\"reason\":\"APPROVAL_GRANTED: reviewed safe operation\"")
                 .contains("\"decision\":\"ALLOW\"")
-                .contains("\"reason\":\"APPROVAL_DENIED\"")
+                .contains("\"reason\":\"APPROVAL_DENIED: risk not accepted\"")
                 .contains("\"decision\":\"BLOCK\"");
     }
 
