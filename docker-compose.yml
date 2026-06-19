@@ -1,0 +1,21 @@
+services:
+  mock:
+    image: mcp-kcops:local
+    build: .
+    environment:
+      - SPRING_PROFILES_ACTIVE=mock
+    ports:
+      - "8090:8090"
+
+  proxy:
+    image: mcp-kcops:local
+    build: .
+    depends_on:
+      - mock
+    ports:
+      - "8080:8080"
+    environment:
+      - KCOPS_UPSTREAMURL=http://mock:8090/mcp
+      - KCOPS_ADMIN_TOKEN=${KCOPS_ADMIN_TOKEN:-}
+    volumes:
+      - ./logs:/app/logs
