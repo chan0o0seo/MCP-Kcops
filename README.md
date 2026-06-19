@@ -63,6 +63,35 @@ Terminal 2 runs the proxy on port 8080:
 
 Audit logs are written as JSON Lines to `logs/audit.jsonl` by default.
 
+### Docker Compose
+
+Build the shared application image and start the mock MCP server on port 8090 and the proxy firewall on port 8080:
+
+```bash
+docker compose up --build
+```
+
+To enable the administrator API, inject its token from the host environment:
+
+```bash
+KCOPS_ADMIN_TOKEN=secret docker compose up --build
+```
+
+Windows PowerShell:
+
+```powershell
+$env:KCOPS_ADMIN_TOKEN = "secret"
+docker compose up --build
+```
+
+Stop and remove the containers:
+
+```bash
+docker compose down
+```
+
+The image build requires internet access to download the base images and Gradle dependencies. In a closed network, build the image in an approved connected environment and import it through an internal registry before running the containers.
+
 ## 관리자 API 인증
 
 `/admin/**` API는 `kcops.admin.token`으로 보호된다. 기본값은 빈 문자열이며, 이 경우 관리자 API는 fail-closed 방식으로 비활성화되어 HTTP 503을 반환한다. 운영 환경에서는 설정 파일에 토큰을 저장하지 말고 환경변수 또는 커맨드라인으로 주입한다.

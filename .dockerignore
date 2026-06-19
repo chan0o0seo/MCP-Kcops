@@ -1,0 +1,10 @@
+build/
+logs/
+.git/
+.gradle/
+*.log
+codex-*.md
+codex-*.txt
+codex-run.log
+mock-server.out
+proxy-server.out
