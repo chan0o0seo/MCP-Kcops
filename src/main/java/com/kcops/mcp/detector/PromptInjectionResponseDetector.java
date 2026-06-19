@@ -9,6 +9,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
@@ -39,22 +40,23 @@ public class PromptInjectionResponseDetector implements ResponseDetector {
         String text = (resp.rawBody() == null ? "" : resp.rawBody())
                 + "\n" + JsonTextExtractor.extract(resp.raw());
         KcopsProperties.Injection injection = properties.getResponse().getInjection();
-        String lowered = inspectionText(text, injection.isDecodeBase64()).toLowerCase(Locale.ROOT);
+        Set<String> variants = InjectionTextNormalizer.variants(
+                inspectionText(text, injection.isDecodeBase64()));
         Map<String, List<String>> types = injection.getTypes();
 
         if (types == null || types.isEmpty()) {
-            return matchesAny(lowered, injection.getPatterns())
+            return matchesAny(variants, injection.getPatterns())
                     ? List.of(finding(name()))
                     : List.of();
         }
 
         List<Finding> findings = new ArrayList<>();
         types.forEach((type, patterns) -> {
-            if (matchesAny(lowered, patterns)) {
+            if (matchesAny(variants, patterns)) {
                 findings.add(finding(type));
             }
         });
-        if (matchesAny(lowered, injection.getPatterns())
+        if (matchesAny(variants, injection.getPatterns())
                 && findings.stream().noneMatch(finding -> DEFAULT_TYPE.equals(finding.detector()))) {
             findings.add(finding(DEFAULT_TYPE));
         }
@@ -79,10 +81,18 @@ public class PromptInjectionResponseDetector implements ResponseDetector {
         return combined.toString();
     }
 
-    private boolean matchesAny(String lowered, List<String> patterns) {
+    private boolean matchesAny(Set<String> variants, List<String> patterns) {
         return patterns != null && patterns.stream()
                 .filter(pattern -> pattern != null && !pattern.isEmpty())
-                .anyMatch(pattern -> lowered.contains(pattern.toLowerCase(Locale.ROOT)));
+                .anyMatch(pattern -> matches(variants, pattern));
+    }
+
+    private boolean matches(Set<String> variants, String pattern) {
+        String loweredPattern = pattern.toLowerCase(Locale.ROOT);
+        String compactPattern = InjectionTextNormalizer.compact(pattern);
+        return variants.stream().anyMatch(variant ->
+                variant.contains(loweredPattern)
+                        || !compactPattern.isEmpty() && variant.contains(compactPattern));
     }
 
     private Finding finding(String detector) {
