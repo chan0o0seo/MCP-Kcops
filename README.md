@@ -10,6 +10,17 @@ Spring Boot WebFlux based MCP Runtime Firewall walking skeleton. It does not cal
 - 요청·응답 detector가 예외를 던지면 해당 방향을 `BLOCK`/`DETECTOR_ERROR`로 강제하고 감사 로그를 남기는 fail-closed 방식으로 처리한다.
 - 승인 저장소는 `kcops.approval.maxPending`(기본값 `1000`)으로 크기를 제한한다. 초과 시 오래된 승인·거절 항목을 먼저 제거하고, 부족하면 오래된 대기 항목을 제거한다.
 
+## 승인 후 실제 실행 (재제출 토큰)
+
+요청 방향에서 `REQUIRE_APPROVAL`이 나오면 응답 본문 최상위에 `approvalId`가 함께 전달되고, 원본 요청 본문은 승인 저장소에 보관된다(관리자 API 응답으로는 노출되지 않음). 흐름은 다음과 같다.
+
+1. 에이전트 요청 → `{"decision":"REQUIRE_APPROVAL", "approvalId":"<id>", ...}`.
+2. 관리자가 `POST /admin/approvals/<id>/approve`(Bearer 토큰)로 승인.
+3. 에이전트가 **동일한 본문**을 헤더 `X-Kcops-Approval-Id: <id>`와 함께 재전송.
+4. 본문의 SHA-256 해시가 보관된 해시와 일치하고 상태가 `APPROVED`이면 요청 검사를 건너뛰고 업스트림으로 1회 전달한다(감사 `ALLOW`/`APPROVAL_EXECUTED`). 토큰은 `CONSUMED`로 소비되어 재사용할 수 없다.
+
+미승인·본문 변조(해시 불일치)·토큰 재사용 재제출은 모두 다시 차단된다. 응답 방향 `REQUIRE_APPROVAL`(업스트림이 이미 실행됨)에는 이 재제출 흐름이 적용되지 않는다.
+
 ## R1 — 도구 메타데이터 인젝션 검사
 
 `tools/list` 응답의 도구 이름, 설명, 입력 스키마 문자열을 로컬 인젝션 패턴으로 검사한다. 최초 관찰이라 지문 변경이 없는 도구도 악성 메타데이터가 발견되면 `REQUIRE_APPROVAL`/`TOOL_METADATA_INJECTION_SUSPECTED`로 처리한다. 지문 변경과 동시에 탐지되면 기존 `TOOL_DESCRIPTION_FINGERPRINT_CHANGED`가 대표 reason으로 유지된다.

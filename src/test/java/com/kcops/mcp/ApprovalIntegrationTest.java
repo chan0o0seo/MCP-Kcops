@@ -32,7 +32,8 @@ class ApprovalIntegrationTest {
             "detectors",
             "categories",
             "createdAt",
-            "status"
+            "status",
+            "bodyHash"
     );
     private static final AtomicInteger upstreamCalls = new AtomicInteger();
     private static final DisposableServer upstream = upstream();

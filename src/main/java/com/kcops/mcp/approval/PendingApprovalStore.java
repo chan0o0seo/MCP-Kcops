@@ -3,6 +3,9 @@ package com.kcops.mcp.approval;
 import com.kcops.mcp.audit.AuditDirection;
 import com.kcops.mcp.config.KcopsProperties;
 import com.kcops.mcp.policy.PolicyDecision;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -30,6 +33,16 @@ public class PendingApprovalStore {
             String tool,
             PolicyDecision decision
     ) {
+        add(traceId, direction, tool, decision, null);
+    }
+
+    public synchronized void add(
+            String traceId,
+            AuditDirection direction,
+            String tool,
+            PolicyDecision decision,
+            String requestBody
+    ) {
         List<String> categories = decision.categories() == null
                 ? List.of()
                 : decision.categories().stream().map(Enum::name).toList();
@@ -41,7 +54,9 @@ public class PendingApprovalStore {
                 decision.detectors(),
                 categories,
                 OffsetDateTime.now(SEOUL).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME),
-                ApprovalStatus.PENDING
+                ApprovalStatus.PENDING,
+                requestBody,
+                requestBody == null ? null : sha256Hex(requestBody)
         );
         approvals.put(traceId, approval);
         trimToLimit();
@@ -65,6 +80,32 @@ public class PendingApprovalStore {
 
     public Optional<PendingApproval> find(String traceId) {
         return Optional.ofNullable(approvals.get(traceId));
+    }
+
+    public synchronized Optional<String> consumeApproved(String approvalId, String incomingBodyHash) {
+        PendingApproval current = approvals.get(approvalId);
+        if (current == null
+                || current.status() != ApprovalStatus.APPROVED
+                || current.bodyHash() == null
+                || !current.bodyHash().equals(incomingBodyHash)) {
+            return Optional.empty();
+        }
+        approvals.put(approvalId, current.withStatus(ApprovalStatus.CONSUMED));
+        return Optional.of(current.requestBody());
+    }
+
+    public static String sha256Hex(String value) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] bytes = digest.digest(value.getBytes(StandardCharsets.UTF_8));
+            StringBuilder builder = new StringBuilder(bytes.length * 2);
+            for (byte b : bytes) {
+                builder.append(String.format("%02x", b));
+            }
+            return builder.toString();
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("SHA-256 is not available", ex);
+        }
     }
 
     private synchronized Optional<PendingApproval> transition(String traceId, ApprovalStatus status) {

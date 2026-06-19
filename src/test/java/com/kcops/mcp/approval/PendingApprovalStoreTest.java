@@ -39,6 +39,68 @@ class PendingApprovalStoreTest {
     }
 
     @Test
+    void storesRequestBodyAndHashAndPreservesThemAcrossStatusTransitions() {
+        String body = "{\"command\":\"rm -rf /tmp/work\"}";
+        store.add(
+                "trace-body",
+                AuditDirection.AGENT_TO_MCP_SERVER,
+                "execute_shell",
+                decision(),
+                body
+        );
+
+        PendingApproval pending = store.find("trace-body").orElseThrow();
+        assertThat(pending.requestBody()).isEqualTo(body);
+        assertThat(pending.bodyHash()).isEqualTo(PendingApprovalStore.sha256Hex(body));
+
+        PendingApproval approved = store.approve("trace-body").orElseThrow();
+        assertThat(approved.requestBody()).isEqualTo(body);
+        assertThat(approved.bodyHash()).isEqualTo(pending.bodyHash());
+    }
+
+    @Test
+    void consumesApprovedMatchingRequestExactlyOnce() {
+        String body = "{\"command\":\"rm -rf /tmp/work\"}";
+        store.add(
+                "trace-consume",
+                AuditDirection.AGENT_TO_MCP_SERVER,
+                "execute_shell",
+                decision(),
+                body
+        );
+        store.approve("trace-consume");
+
+        assertThat(store.consumeApproved("trace-consume", PendingApprovalStore.sha256Hex(body)))
+                .contains(body);
+        assertThat(store.find("trace-consume"))
+                .get()
+                .extracting(PendingApproval::status)
+                .isEqualTo(ApprovalStatus.CONSUMED);
+        assertThat(store.consumeApproved("trace-consume", PendingApprovalStore.sha256Hex(body)))
+                .isEmpty();
+    }
+
+    @Test
+    void rejectsHashMismatchPendingDeniedAndMissingApprovals() {
+        String body = "{\"command\":\"rm -rf /tmp/work\"}";
+        store.add("approved", AuditDirection.AGENT_TO_MCP_SERVER, "execute_shell", decision(), body);
+        store.approve("approved");
+        store.add("pending", AuditDirection.AGENT_TO_MCP_SERVER, "execute_shell", decision(), body);
+        store.add("denied", AuditDirection.AGENT_TO_MCP_SERVER, "execute_shell", decision(), body);
+        store.deny("denied");
+
+        assertThat(store.consumeApproved("approved", PendingApprovalStore.sha256Hex(body + " changed")))
+                .isEmpty();
+        assertThat(store.find("approved"))
+                .get()
+                .extracting(PendingApproval::status)
+                .isEqualTo(ApprovalStatus.APPROVED);
+        assertThat(store.consumeApproved("pending", PendingApprovalStore.sha256Hex(body))).isEmpty();
+        assertThat(store.consumeApproved("denied", PendingApprovalStore.sha256Hex(body))).isEmpty();
+        assertThat(store.consumeApproved("missing", PendingApprovalStore.sha256Hex(body))).isEmpty();
+    }
+
+    @Test
     void denyTransitionsStatusAndMissingTraceIdReturnsEmpty() {
         store.add("trace-2", AuditDirection.MCP_SERVER_TO_AGENT, null, decision());
 
