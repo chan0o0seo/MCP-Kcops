@@ -6,6 +6,7 @@ import com.kcops.mcp.policy.PolicyDecision;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -14,6 +15,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -22,9 +24,18 @@ public class PendingApprovalStore {
     private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
     private final ConcurrentMap<String, PendingApproval> approvals = new ConcurrentHashMap<>();
     private final int maxPending;
+    private final int ttlSeconds;
+    private final Clock clock;
 
+    @Autowired
     public PendingApprovalStore(KcopsProperties properties) {
+        this(properties, Clock.system(SEOUL));
+    }
+
+    public PendingApprovalStore(KcopsProperties properties, Clock clock) {
         this.maxPending = Math.max(0, properties.getApproval().getMaxPending());
+        this.ttlSeconds = properties.getApproval().getTtlSeconds();
+        this.clock = clock;
     }
 
     public synchronized void add(
@@ -43,6 +54,7 @@ public class PendingApprovalStore {
             PolicyDecision decision,
             String requestBody
     ) {
+        purgeExpired();
         List<String> categories = decision.categories() == null
                 ? List.of()
                 : decision.categories().stream().map(Enum::name).toList();
@@ -53,7 +65,7 @@ public class PendingApprovalStore {
                 decision.reason(),
                 decision.detectors(),
                 categories,
-                OffsetDateTime.now(SEOUL).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME),
+                OffsetDateTime.now(clock).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME),
                 ApprovalStatus.PENDING,
                 requestBody,
                 requestBody == null ? null : sha256Hex(requestBody)
@@ -62,7 +74,8 @@ public class PendingApprovalStore {
         trimToLimit();
     }
 
-    public List<PendingApproval> pending() {
+    public synchronized List<PendingApproval> pending() {
+        purgeExpired();
         return approvals.values().stream()
                 .filter(approval -> approval.status() == ApprovalStatus.PENDING)
                 .sorted(java.util.Comparator.comparing(PendingApproval::createdAt)
@@ -70,19 +83,23 @@ public class PendingApprovalStore {
                 .toList();
     }
 
-    public Optional<PendingApproval> approve(String traceId) {
+    public synchronized Optional<PendingApproval> approve(String traceId) {
+        purgeExpired();
         return transition(traceId, ApprovalStatus.APPROVED);
     }
 
-    public Optional<PendingApproval> deny(String traceId) {
+    public synchronized Optional<PendingApproval> deny(String traceId) {
+        purgeExpired();
         return transition(traceId, ApprovalStatus.DENIED);
     }
 
-    public Optional<PendingApproval> find(String traceId) {
+    public synchronized Optional<PendingApproval> find(String traceId) {
+        purgeExpired();
         return Optional.ofNullable(approvals.get(traceId));
     }
 
     public synchronized Optional<String> consumeApproved(String approvalId, String incomingBodyHash) {
+        purgeExpired();
         PendingApproval current = approvals.get(approvalId);
         if (current == null
                 || current.status() != ApprovalStatus.APPROVED
@@ -119,6 +136,20 @@ public class PendingApprovalStore {
             return transitioned;
         });
         return Optional.ofNullable(updated.get());
+    }
+
+    private void purgeExpired() {
+        if (ttlSeconds <= 0) {
+            return;
+        }
+        OffsetDateTime now = OffsetDateTime.now(clock);
+        approvals.entrySet().removeIf(entry -> {
+            PendingApproval approval = entry.getValue();
+            return approval.status() == ApprovalStatus.PENDING
+                    && OffsetDateTime.parse(approval.createdAt())
+                    .plusSeconds(ttlSeconds)
+                    .isBefore(now);
+        });
     }
 
     private void trimToLimit() {

@@ -127,6 +127,7 @@ public class KcopsProperties {
     public static class Limits {
         private int maxRequestBytes = 262144;
         private int maxResponseBytes = 262144;
+        private int maxResponseScanBytes = 1048576;
         private Action overLimitAction = Action.REQUIRE_APPROVAL;
 
         public int getMaxRequestBytes() {
@@ -143,6 +144,14 @@ public class KcopsProperties {
 
         public void setMaxResponseBytes(int maxResponseBytes) {
             this.maxResponseBytes = maxResponseBytes;
+        }
+
+        public int getMaxResponseScanBytes() {
+            return maxResponseScanBytes;
+        }
+
+        public void setMaxResponseScanBytes(int maxResponseScanBytes) {
+            this.maxResponseScanBytes = maxResponseScanBytes;
         }
 
         public Action getOverLimitAction() {
@@ -169,6 +178,8 @@ public class KcopsProperties {
     public static class Approval {
         private boolean enabled = true;
         private int maxPending = 1000;
+        private int ttlSeconds = 300;
+        private boolean requireReason = true;
 
         public boolean isEnabled() {
             return enabled;
@@ -184,6 +195,22 @@ public class KcopsProperties {
 
         public void setMaxPending(int maxPending) {
             this.maxPending = maxPending;
+        }
+
+        public int getTtlSeconds() {
+            return ttlSeconds;
+        }
+
+        public void setTtlSeconds(int ttlSeconds) {
+            this.ttlSeconds = ttlSeconds;
+        }
+
+        public boolean isRequireReason() {
+            return requireReason;
+        }
+
+        public void setRequireReason(boolean requireReason) {
+            this.requireReason = requireReason;
         }
     }
 

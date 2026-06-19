@@ -13,6 +13,8 @@ kcops:
   limits:
     maxRequestBytes: 262144
     maxResponseBytes: 262144
+    # 이 크기까지 응답을 버퍼링·검사하고, 초과 시 RESPONSE_TOO_LARGE로 차단한다.
+    maxResponseScanBytes: 1048576
     overLimitAction: require_approval
   # 운영 시 환경변수/커맨드라인 오버라이드(`--kcops.admin.token=...`)로 주입; 비어 있으면 관리자 API 비활성
   admin:
@@ -20,6 +22,8 @@ kcops:
   approval:
     enabled: true
     maxPending: 1000
+    ttlSeconds: 300
+    requireReason: true
   request:
     toolCall:
       action: require_approval

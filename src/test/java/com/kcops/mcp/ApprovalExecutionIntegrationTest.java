@@ -80,6 +80,8 @@ class ApprovalExecutionIntegrationTest {
 
         webTestClient.post().uri("/admin/approvals/{approvalId}/approve", approvalId)
                 .header("Authorization", "Bearer test-admin-token")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .bodyValue("{\"reason\":\"approved integration execution\"}")
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
