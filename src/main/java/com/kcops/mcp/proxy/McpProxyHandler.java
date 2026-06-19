@@ -79,15 +79,46 @@ public class McpProxyHandler {
     public Mono<ServerResponse> handle(ServerRequest serverRequest) {
         String traceId = UUID.randomUUID().toString();
         Instant started = Instant.now();
+        String approvalId = serverRequest.headers().firstHeader("X-Kcops-Approval-Id");
         return serverRequest.bodyToMono(String.class)
                 .publishOn(Schedulers.boundedElastic())
-                .flatMap(body -> handleBuffered(traceId, started, body))
+                .flatMap(body -> handleBuffered(traceId, started, body, approvalId))
                 .switchIfEmpty(Mono.defer(() -> handleEmptyRequest(traceId, started)))
                 .onErrorResume(DataBufferLimitException.class,
                         ex -> handleRequestTooLarge(traceId, started));
     }
 
-    private Mono<ServerResponse> handleBuffered(String traceId, Instant started, String body) {
+    private Mono<ServerResponse> handleBuffered(
+            String traceId,
+            Instant started,
+            String body,
+            String approvalId
+    ) {
+        if (approvalId != null && !approvalId.isBlank()) {
+            String token = approvalId.trim();
+            return pendingApprovalStore.consumeApproved(
+                            token,
+                            PendingApprovalStore.sha256Hex(body)
+                    )
+                    .map(approvedBody -> {
+                        McpRequest approvedRequest = parseRequest(approvedBody);
+                        PolicyDecision executed = new PolicyDecision(
+                                Action.ALLOW,
+                                "APPROVAL_EXECUTED",
+                                List.of(),
+                                List.of()
+                        );
+                        auditLogger.log(token, AuditDirection.AGENT_TO_MCP_SERVER, properties.getUpstreamUrl(),
+                                approvedRequest.tool(), executed,
+                                Duration.between(started, Instant.now()).toMillis(), false, false);
+                        return forwardUpstream(token, approvedRequest, approvedBody);
+                    })
+                    .orElseGet(() -> handleNormally(traceId, started, body));
+        }
+        return handleNormally(traceId, started, body);
+    }
+
+    private Mono<ServerResponse> handleNormally(String traceId, Instant started, String body) {
         McpRequest request = parseRequest(body);
         DetectionResult detection = inspectRequest(request);
         List<Finding> findings = detection.findings();
@@ -108,11 +139,16 @@ public class McpProxyHandler {
                     traceId,
                     AuditDirection.AGENT_TO_MCP_SERVER,
                     request.tool(),
-                    requestDecision
+                    requestDecision,
+                    body
             );
         }
         if (requestDecision.action() == Action.BLOCK || requestDecision.action() == Action.REQUIRE_APPROVAL) {
-            return decisionResponse(request.id(), requestDecision);
+            return decisionResponse(
+                    request.id(),
+                    requestDecision,
+                    properties.getApproval().isEnabled() ? traceId : null
+            );
         }
         String upstreamRequestBody = body;
         if (requestDecision.action() == Action.MASK) {
@@ -124,14 +160,27 @@ public class McpProxyHandler {
                             traceId,
                             AuditDirection.AGENT_TO_MCP_SERVER,
                             request.tool(),
-                            approvalDecision
+                            approvalDecision,
+                            body
                     );
                 }
-                return decisionResponse(request.id(), approvalDecision);
+                return decisionResponse(
+                        request.id(),
+                        approvalDecision,
+                        properties.getApproval().isEnabled() ? traceId : null
+                );
             }
             upstreamRequestBody = Masker.mask(body, findings);
         }
 
+        return forwardUpstream(traceId, request, upstreamRequestBody);
+    }
+
+    private Mono<ServerResponse> forwardUpstream(
+            String traceId,
+            McpRequest request,
+            String upstreamRequestBody
+    ) {
         Instant upstreamStarted = Instant.now();
         return webClient.post()
                 .uri(properties.getUpstreamUrl())
@@ -172,7 +221,15 @@ public class McpProxyHandler {
                     decision
             );
         }
-        return errorResponse(null, decision, -32001, sizeLimitMessage(decision));
+        return errorResponse(
+                null,
+                decision,
+                -32001,
+                sizeLimitMessage(decision),
+                decision.action() == Action.REQUIRE_APPROVAL && properties.getApproval().isEnabled()
+                        ? traceId
+                        : null
+        );
     }
 
     private Mono<ServerResponse> handleUpstreamError(
@@ -331,13 +388,22 @@ public class McpProxyHandler {
     }
 
     private Mono<ServerResponse> decisionResponse(JsonNode id, PolicyDecision decision) {
+        return decisionResponse(id, decision, null);
+    }
+
+    private Mono<ServerResponse> decisionResponse(
+            JsonNode id,
+            PolicyDecision decision,
+            String approvalId
+    ) {
         return errorResponse(
                 id,
                 decision,
                 -32001,
                 decision.action() == Action.REQUIRE_APPROVAL
                         ? "MCP request requires approval by Kcops policy"
-                        : "MCP request blocked by Kcops policy"
+                        : "MCP request blocked by Kcops policy",
+                approvalId
         );
     }
 
@@ -347,12 +413,25 @@ public class McpProxyHandler {
             int code,
             String message
     ) {
+        return errorResponse(id, decision, code, message, null);
+    }
+
+    private Mono<ServerResponse> errorResponse(
+            JsonNode id,
+            PolicyDecision decision,
+            int code,
+            String message,
+            String approvalId
+    ) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("jsonrpc", "2.0");
         body.put("id", id);
         body.put("decision", decision.action());
         body.put("reason", properties.isDiscloseDetectors() ? decision.reason() : "POLICY_VIOLATION");
         body.put("detectors", properties.isDiscloseDetectors() ? decision.detectors() : List.of());
+        if (decision.action() == Action.REQUIRE_APPROVAL && approvalId != null) {
+            body.put("approvalId", approvalId);
+        }
         body.put("error", Map.of(
                 "code", code,
                 "message", message

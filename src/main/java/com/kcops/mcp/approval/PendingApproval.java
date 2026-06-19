@@ -1,5 +1,6 @@
 package com.kcops.mcp.approval;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.kcops.mcp.audit.AuditDirection;
 import java.util.List;
 
@@ -11,7 +12,9 @@ public record PendingApproval(
         List<String> detectors,
         List<String> categories,
         String createdAt,
-        ApprovalStatus status
+        ApprovalStatus status,
+        @JsonIgnore String requestBody,
+        String bodyHash
 ) {
     public PendingApproval {
         detectors = detectors == null ? List.of() : List.copyOf(detectors);
@@ -27,7 +30,9 @@ public record PendingApproval(
                 detectors,
                 categories,
                 createdAt,
-                newStatus
+                newStatus,
+                requestBody,
+                bodyHash
         );
     }
 }
