@@ -49,14 +49,28 @@ kcops:
     injection:
       action: block
       decodeBase64: true
+      # 중첩 base64 최대 디코딩 깊이, 결정적 정규화 적용 길이 상한(자원 고갈 방지)
+      maxBase64Depth: 3
+      maxNormalizeChars: 200000
       patterns: []
+      # 각 타입의 패턴은 (1) 직접 표현 + (2) 동의어·말바꿈 계열(idiom family)을 함께 포함한다.
+      # 계열 패턴은 특정 eval 문장이 아니라 공격 의도의 일반화된 표현이며 정상 데이터셋에서 검증됨.
       types:
-        ignore_previous_instruction: ["이전 지시를 무시", "이전 지시는 무시", "ignore previous instructions", "disregard the above"]
-        system_prompt_leak: ["시스템 프롬프트를 출력", "system prompt", "print your instructions", "reveal your system prompt"]
-        external_exfiltration: ["전체 메일을 전송", "외부로 전송", "외부 서버로 전송", "send to external", "exfiltrate"]
-        follow_up_tool_call: ["다음 도구를 호출", "이어서 다음 도구", "call the following tool", "then invoke"]
+        ignore_previous_instruction: ["이전 지시를 무시", "이전 지시는 무시", "ignore previous instructions", "disregard the above",
+          "forget all", "forget everything", "forget the previous", "set aside the rules", "set aside the previous",
+          "disregard whatever", "disregard everything", "disregard the previous", "지침은 잊", "이전 지침은 잊", "기존 지시는 잊", "앞선 안내는 잊"]
+        system_prompt_leak: ["시스템 프롬프트를 출력", "system prompt", "print your instructions", "reveal your system prompt",
+          "startup configuration", "hidden configuration", "hidden instructions", "private directives", "internal directives", "hidden directives",
+          "숨겨진 지시", "내부 지침을 공개"]
+        external_exfiltration: ["전체 메일을 전송", "외부로 전송", "외부 서버로 전송", "send to external", "exfiltrate",
+          "off-site", "company boundary", "outside the company", "to an external", "to a server beyond",
+          "외부 수신", "외부로 빼", "회사 밖으로"]
+        follow_up_tool_call: ["다음 도구를 호출", "이어서 다음 도구", "call the following tool", "then invoke",
+          "activate the webhook", "activating the webhook", "the webhook operation", "trigger the webhook", "invoke the next tool"]
         secret_exfiltration: ["api 키를 가져와", "api 키를 전송", "fetch the api key", "send the api key"]
-        covert_execution: ["사용자에게 말하지 말고", "사용자에게 알리지 말고", "do not tell the user"]
+        covert_execution: ["사용자에게 말하지 말고", "사용자에게 알리지 말고", "do not tell the user",
+          "invisible to the", "without telling the", "without surfacing", "without informing the user", "do not reveal to the user",
+          "사용자 몰래", "사용자에게 숨기"]
     pii:
       action: mask
       detectors: [korean_rrn, korean_phone, email, korean_bank_account, korean_address, jwt, api_key, ssh_private_key]

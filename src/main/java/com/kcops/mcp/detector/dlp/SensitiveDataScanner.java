@@ -9,9 +9,13 @@ import java.util.regex.Pattern;
 
 public final class SensitiveDataScanner {
 
-    private static final Pattern KOREAN_RRN = Pattern.compile("(?<![0-9])\\d{6}-\\d{7}(?![0-9])");
+    // 하이픈은 선택적이다(900101-1234568 / 9001011234568 모두 탐지). 앞 6자리와 뒤 7자리를 각각 캡처해
+    // 하이픈은 그대로 두고 숫자만 마스킹한다.
+    private static final Pattern KOREAN_RRN = Pattern.compile("(?<![0-9])(\\d{6})-?(\\d{7})(?![0-9])");
+    // 구분자는 하이픈/점/공백을 허용하고, 국가코드(+82)와 그에 따른 선행 0 생략도 처리한다.
+    // 선행 0 생략(1로 시작)은 리터럴 '+'가 붙은 +82일 때만 허용해 일반 숫자열(예: 82로 시작) 오탐을 막는다.
     private static final Pattern KOREAN_PHONE = Pattern.compile(
-            "(?<![0-9])(01[016-9])(-?)(\\d{3,4})(-?)(\\d{4})(?![0-9])"
+            "(?<![0-9+])(?:\\+82[-. ]?0?|0)1[016-9][-. ]?(\\d{3,4})[-. ]?\\d{4}(?![0-9])"
     );
     private static final Pattern EMAIL = Pattern.compile(
             "(?<![A-Za-z0-9._%+-])[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}(?![A-Za-z0-9.-])"
@@ -73,10 +77,11 @@ public final class SensitiveDataScanner {
             if (!validRrn(matcher.group())) {
                 continue;
             }
+            // 앞 6자리와 뒤 7자리를 각각 마스킹한다(하이픈이 있으면 그 사이는 보존됨).
             matches.add(new SensitiveMatch("korean_rrn", PolicyCategory.PII,
-                    matcher.start(), matcher.start() + 6, '*', null, matcher.group()));
+                    matcher.start(1), matcher.end(1), '*', null, matcher.group()));
             matches.add(new SensitiveMatch("korean_rrn", PolicyCategory.PII,
-                    matcher.start() + 7, matcher.end(), '*', null, matcher.group()));
+                    matcher.start(2), matcher.end(2), '*', null, matcher.group()));
         }
     }
 
@@ -94,7 +99,7 @@ public final class SensitiveDataScanner {
         Matcher matcher = KOREAN_PHONE.matcher(text);
         while (matcher.find()) {
             matches.add(new SensitiveMatch("korean_phone", PolicyCategory.PII,
-                    matcher.start(3), matcher.end(3), '*', null, matcher.group()));
+                    matcher.start(1), matcher.end(1), '*', null, matcher.group()));
         }
     }
 

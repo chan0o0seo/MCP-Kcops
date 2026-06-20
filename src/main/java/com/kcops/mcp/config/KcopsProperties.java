@@ -427,6 +427,10 @@ public class KcopsProperties {
         private Action action = Action.BLOCK;
         private List<String> patterns = new ArrayList<>();
         private boolean decodeBase64 = false;
+        // 중첩 base64 디코딩 최대 깊이(0 이하면 디코딩 비활성과 동일하게 1회 미만 처리).
+        private int maxBase64Depth = 3;
+        // 결정적 정규화·디코딩 계층을 적용할 검사 텍스트 길이 상한(코드포인트 수).
+        private int maxNormalizeChars = 200_000;
         private Map<String, List<String>> types = new LinkedHashMap<>();
 
         public Action getAction() {
@@ -435,6 +439,22 @@ public class KcopsProperties {
 
         public void setAction(Action action) {
             this.action = action;
+        }
+
+        public int getMaxBase64Depth() {
+            return maxBase64Depth;
+        }
+
+        public void setMaxBase64Depth(int maxBase64Depth) {
+            this.maxBase64Depth = maxBase64Depth;
+        }
+
+        public int getMaxNormalizeChars() {
+            return maxNormalizeChars;
+        }
+
+        public void setMaxNormalizeChars(int maxNormalizeChars) {
+            this.maxNormalizeChars = maxNormalizeChars;
         }
 
         public List<String> getPatterns() {

@@ -40,8 +40,10 @@ public class PromptInjectionResponseDetector implements ResponseDetector {
         String text = (resp.rawBody() == null ? "" : resp.rawBody())
                 + "\n" + JsonTextExtractor.extract(resp.raw());
         KcopsProperties.Injection injection = properties.getResponse().getInjection();
+        int scanCap = Math.max(0, injection.getMaxNormalizeChars());
         Set<String> variants = InjectionTextNormalizer.variants(
-                inspectionText(text, injection.isDecodeBase64()));
+                inspectionText(text, injection.isDecodeBase64(), injection.getMaxBase64Depth(), scanCap),
+                scanCap);
         Map<String, List<String>> types = injection.getTypes();
 
         if (types == null || types.isEmpty()) {
@@ -63,22 +65,35 @@ public class PromptInjectionResponseDetector implements ResponseDetector {
         return List.copyOf(findings);
     }
 
-    private String inspectionText(String text, boolean decodeBase64) {
+    private String inspectionText(String text, boolean decodeBase64, int maxDepth, int scanCap) {
         if (!decodeBase64) {
             return text;
         }
-
         StringBuilder combined = new StringBuilder(text);
+        int cap = scanCap <= 0 ? Integer.MAX_VALUE : Math.multiplyExact(Math.min(scanCap, 1 << 22), 4);
+        decodeBase64Into(text, combined, Math.max(1, maxDepth), cap);
+        return combined.toString();
+    }
+
+    // 중첩 base64를 maxDepth회까지 재귀 디코딩한다. 디코딩 결과가 다시 base64면 한 단계 더 푼다.
+    private void decodeBase64Into(String text, StringBuilder combined, int depth, int cap) {
+        if (depth <= 0 || combined.length() >= cap) {
+            return;
+        }
         Matcher matcher = BASE64_TOKEN.matcher(text);
         while (matcher.find()) {
+            if (combined.length() >= cap) {
+                return;
+            }
             try {
                 byte[] decoded = Base64.getDecoder().decode(matcher.group());
-                combined.append('\n').append(new String(decoded, StandardCharsets.UTF_8));
+                String value = new String(decoded, StandardCharsets.UTF_8);
+                combined.append('\n').append(value);
+                decodeBase64Into(value, combined, depth - 1, cap);
             } catch (IllegalArgumentException ignored) {
                 // Base64처럼 보이지만 유효하지 않은 토큰은 검사 대상에서 제외한다.
             }
         }
-        return combined.toString();
     }
 
     private boolean matchesAny(Set<String> variants, List<String> patterns) {

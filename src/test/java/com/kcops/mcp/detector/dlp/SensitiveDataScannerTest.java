@@ -208,6 +208,40 @@ class SensitiveDataScannerTest {
     }
 
     @Test
+    void detectsHyphenlessKoreanRrnAndMasksAllDigits() {
+        String text = "본인확인 9001011234568 확인";
+
+        assertThat(SensitiveDataScanner.scan(text))
+                .filteredOn(match -> match.detectorName().equals("korean_rrn"))
+                .extracting(match -> text.substring(match.start(), match.end()))
+                .containsExactly("900101", "1234568");
+        // 체크섬 불일치 13자리는 탐지하지 않는다.
+        assertThat(SensitiveDataScanner.scan("코드 9001011234567 끝"))
+                .extracting(SensitiveMatch::detectorName)
+                .doesNotContain("korean_rrn");
+    }
+
+    @Test
+    void detectsKoreanPhoneWithDotSpaceAndCountryCode() {
+        for (String text : List.of(
+                "연락처 010.1234.5678",
+                "연락처 010 1234 5678",
+                "해외 +82-10-1234-5678",
+                "해외 +82 10 1234 5678")) {
+            assertThat(SensitiveDataScanner.scan(text))
+                    .as("phone variant: %s", text)
+                    .filteredOn(match -> match.detectorName().equals("korean_phone"))
+                    .singleElement()
+                    .satisfies(match -> assertThat(text.substring(match.start(), match.end()))
+                            .isEqualTo("1234"));
+        }
+        // 리터럴 '+' 없는 82 시작 숫자열은 전화번호로 보지 않는다.
+        assertThat(SensitiveDataScanner.scan("추적 번호 8201012223333 내부"))
+                .extracting(SensitiveMatch::detectorName)
+                .doesNotContain("korean_phone");
+    }
+
+    @Test
     void doesNotTreatNameAsStandalonePii() {
         assertThat(SensitiveDataScanner.scan("홍길동입니다")).isEmpty();
         assertThat(SensitiveDataScanner.koreanNameSignalScore("홍길동")).isGreaterThanOrEqualTo(1);
