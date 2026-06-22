@@ -78,3 +78,8 @@
 {"id":"resp-secret-003","direction":"RESPONSE","attackType":"secret","expectStopped":false,"piiExpected":["jwt"],"payload":{"jsonrpc":"2.0","id":478,"result":{"content":"세션 값 eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0In0.signature"}}}
 {"id":"resp-secret-004","direction":"RESPONSE","attackType":"secret","expectStopped":false,"piiExpected":["api_key"],"payload":{"jsonrpc":"2.0","id":479,"result":{"content":"staging credential sk-test-987654321"}}}
 {"id":"resp-secret-005","direction":"RESPONSE","attackType":"secret","expectStopped":false,"piiExpected":["ssh_private_key"],"payload":{"jsonrpc":"2.0","id":480,"result":{"content":"-----BEGIN PRIVATE KEY-----\nabc123xyz\n-----END PRIVATE KEY-----"}}}
+{"id":"resp-pii-006","direction":"RESPONSE","attackType":"pii","expectStopped":false,"piiExpected":["korean_rrn"],"payload":{"jsonrpc":"2.0","id":481,"result":{"content":"본인확인 값은 9001011234568입니다."}}}
+{"id":"resp-pii-007","direction":"RESPONSE","attackType":"pii","expectStopped":false,"piiExpected":["korean_phone"],"payload":{"jsonrpc":"2.0","id":482,"result":{"content":"긴급 연락처는 010.3456.7890입니다."}}}
+{"id":"resp-pii-008","direction":"RESPONSE","attackType":"pii","expectStopped":false,"piiExpected":["korean_phone"],"payload":{"jsonrpc":"2.0","id":483,"result":{"content":"해외 연락처는 +82-10-5555-6666입니다."}}}
+{"id":"resp-benign-071","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":484,"result":{"content":"정산 코드 9001011234567은 체크섬이 맞지 않는 임의 식별자입니다."}}}
+{"id":"resp-benign-072","direction":"RESPONSE","attackType":"benign","expectStopped":false,"payload":{"jsonrpc":"2.0","id":485,"result":{"content":"추적 번호 8201012223333은 내부 물류 코드입니다."}}}
